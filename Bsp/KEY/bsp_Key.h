@@ -1,53 +1,44 @@
-#ifndef _BSP_KEY_H
+ï»¿#ifndef _BSP_KEY_H
 #define _BSP_KEY_H
-#include "stm32f4xx.h"
-#include "bsp_led.h"
 
+#include "stm32f4xx_hal.h"
+#include <stdint.h>
 
-/*****************************************************************************
- ** ÒÆÖ²ÅäÖÃÇø
-****************************************************************************/
-// KEY_1_WKUP, ÏĞÊ±ÏÂÀ­£¬°´ÏÂÊ±±»ÖÃ¸ßµçÆ½
-#define KEY_1_CLK                      RCC_AHB1Periph_GPIOA  // ¶Ë¿ÚÊ±ÖÓ
-#define KEY_1_GPIO                     GPIOA                 // Òı½ÅËùÓÃ¶Ë¿Ú
-#define KEY_1_PIN                      GPIO_Pin_0            // Òı½Å±àºÅ
-#define KEY_1_PUPD                     GPIO_PuPd_DOWN        // ÏĞÊ±ÄÚ²¿ÉÏÏÂÀ­×´Ì¬
-#define KEY_1_EXTI_PORT                EXTI_PortSourceGPIOA  // Òı½ÅµÄÖĞ¶Ï¶Ë¿Ú  
-#define KEY_1_EXTI_PIN                 EXTI_PinSource0       // Òı½ÅµÄÖĞ¶Ï±àºÅ
-#define KEY_1_EXTI_LINE                EXTI_Line0            // Íâ²¿ÖĞ¶ÏÏß±àºÅ 
-#define KEY_1_EXTI_TRIGGER             EXTI_Trigger_Rising   // ´¥·¢·½Ê½; ÉÏÉıÑØ´¥·¢:EXTI_Trigger_Rising£¬ ÏÂ½µÑØ´¥·¢:EXTI_Trigger_Falling
-#define KEY_1_INTERRUPT_NUMBER         EXTI0_IRQn            // ÖĞ¶Ï±àºÅ£¬¼´ÔÚÖĞ¶ÏÏòÁ¿±íÖĞµÄ±àºÅ
-#define KEY_1_IRQHANDLER               EXTI0_IRQHandler      // ÖĞ¶Ï·şÎñº¯Êı; ÖĞ¶Ï·şÎñº¯ÊıµÄÃû³Æ£¬±ØĞëÓëÆô¶¯ÎÄ¼şÖĞËùÉùÃ÷µÄÒ»Ñù£¬·ñÔòÖĞ¶ÏÊ±»áÒòÎªÕÒ²»µ½º¯ÊıÈë¿Ú¶ø¿¨ËÀ;
-// KEY_2, ÏĞÊ±ÉÏÀ­£¬°´ÏÂÊ±±»ÖÃµÍµçÆ½ 
-#define KEY_2_CLK                      RCC_AHB1Periph_GPIOA  // ¶Ë¿ÚÊ±ÖÓ
-#define KEY_2_GPIO                     GPIOA                 // Òı½ÅËùÓÃ¶Ë¿Ú
-#define KEY_2_PIN                      GPIO_Pin_1            // Òı½Å±àºÅ
-#define KEY_2_PUPD                     GPIO_PuPd_UP          // ÏĞÊ±ÄÚ²¿ÉÏÏÂÀ­×´Ì¬
-#define KEY_2_EXTI_PORT                EXTI_PortSourceGPIOA  // Òı½ÅµÄÖĞ¶Ï¶Ë¿Ú  
-#define KEY_2_EXTI_PIN                 EXTI_PinSource1       // Òı½ÅµÄÖĞ¶Ï±àºÅ
-#define KEY_2_EXTI_LINE                EXTI_Line1            // Íâ²¿ÖĞ¶ÏÏß±àºÅ 
-#define KEY_2_EXTI_TRIGGER             EXTI_Trigger_Falling  // ´¥·¢·½Ê½; ÉÏÉıÑØ´¥·¢:EXTI_Trigger_Rising£¬ ÏÂ½µÑØ´¥·¢:EXTI_Trigger_Falling
-#define KEY_2_INTERRUPT_NUMBER         EXTI1_IRQn            // ÖĞ¶Ï±àºÅ£¬¼´ÔÚÖĞ¶ÏÏòÁ¿±íÖĞµÄ±àºÅ
-#define KEY_2_IRQHANDLER               EXTI1_IRQHandler      // ÖĞ¶Ï·şÎñº¯Êı; ÖĞ¶Ï·şÎñº¯ÊıµÄÃû³Æ£¬±ØĞëÓëÆô¶¯ÎÄ¼şÖĞËùÉùÃ÷µÄÒ»Ñù£¬·ñÔòÖĞ¶ÏÊ±»áÒòÎªÕÒ²»µ½º¯ÊıÈë¿Ú¶ø¿¨ËÀ;
-// KEY_2, ÏĞÊ±ÉÏÀ­£¬°´ÏÂÊ±±»ÖÃµÍµçÆ½
-#define KEY_3_CLK                      RCC_AHB1Periph_GPIOA  // ¶Ë¿ÚÊ±ÖÓ
-#define KEY_3_GPIO                     GPIOA                 // Òı½ÅËùÓÃ¶Ë¿Ú
-#define KEY_3_PIN                      GPIO_Pin_4            // Òı½Å±àºÅ
-#define KEY_3_PUPD                     GPIO_PuPd_UP          // ÏĞÊ±ÄÚ²¿ÉÏÏÂÀ­×´Ì¬
-#define KEY_3_EXTI_PORT                EXTI_PortSourceGPIOA  // Òı½ÅµÄÖĞ¶Ï¶Ë¿Ú  
-#define KEY_3_EXTI_PIN                 EXTI_PinSource4       // Òı½ÅµÄÖĞ¶Ï±àºÅ
-#define KEY_3_EXTI_LINE                EXTI_Line4            // Íâ²¿ÖĞ¶ÏÏß±àºÅ 
-#define KEY_3_EXTI_TRIGGER             EXTI_Trigger_Falling  // ´¥·¢·½Ê½; ÉÏÉıÑØ´¥·¢:EXTI_Trigger_Rising£¬ ÏÂ½µÑØ´¥·¢:EXTI_Trigger_Falling
-#define KEY_3_INTERRUPT_NUMBER         EXTI4_IRQn            // ÖĞ¶Ï±àºÅ£¬¼´ÔÚÖĞ¶ÏÏòÁ¿±íÖĞµÄ±àºÅ
-#define KEY_3_IRQHANDLER               EXTI4_IRQHandler      // ÖĞ¶Ï·şÎñº¯Êı; ÖĞ¶Ï·şÎñº¯ÊıµÄÃû³Æ£¬±ØĞëÓëÆô¶¯ÎÄ¼şÖĞËùÉùÃ÷µÄÒ»Ñù£¬·ñÔòÖĞ¶ÏÊ±»áÒòÎªÕÒ²»µ½º¯ÊıÈë¿Ú¶ø¿¨ËÀ;
-   
+/******************************************************************************
+ * æ–‡ä»¶åç§°: bsp_Key.h
+ * åŠŸèƒ½è¯´æ˜: æŒ‰é”®é©±åŠ¨å¤´æ–‡ä»¶ï¼ˆBSPå±‚ï¼‰
+ * è¯´æ˜    :
+ *           1. å½“å‰ä½¿ç”¨ KEY_1ï¼ˆPA0ï¼‰ä½œä¸ºå¤–éƒ¨ä¸­æ–­æŒ‰é”®
+ *           2. ä¸­æ–­ä¸­åªç½®ä½æ ‡å¿—ï¼Œä¸»å¾ªç¯è¯»å–äº‹ä»¶
+ ******************************************************************************/
 
+/* KEY_1 ç¡¬ä»¶å®šä¹‰ï¼šPA0ï¼Œé—²æ—¶ä¸‹æ‹‰ï¼ŒæŒ‰ä¸‹ä¸ºé«˜ç”µå¹³ï¼Œä¸Šå‡æ²¿è§¦å‘ */
+#define KEY_1_GPIO_PORT      GPIOA
+#define KEY_1_GPIO_PIN       GPIO_PIN_0
+#define KEY_1_GPIO_CLK_ENABLE() __HAL_RCC_GPIOA_CLK_ENABLE()
+#define KEY_1_EXTI_IRQn      EXTI0_IRQn
 
-/*****************************************************************************
- ** ÉùÃ÷È«¾Öº¯Êı
-****************************************************************************/
-void    Key_Init(void);  // Ê¹ÓÃhÎÄ¼şÖĞµÄ²ÎÊı£¬³õÊ¼»¯Òı½Å
-uint8_t Key_Scan(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t targetStatus);  // Òı½Å¶Ë¿Ú¡¢Òı½Å±àºÅ¡¢ÆÚ´ıµçÆ½
+/**
+  * @brief  æŒ‰é”®é©±åŠ¨åˆå§‹åŒ–å‡½æ•°
+  * @param  æ— 
+  * @retval æ— 
+  * @note   é…ç½®PA0ä¸ºä¸Šå‡æ²¿å¤–éƒ¨ä¸­æ–­è¾“å…¥
+  */
+void Key_Init(void);
+
+/**
+  * @brief  æŒ‰é”®ä¸­æ–­å›è°ƒå¤„ç†å‡½æ•°
+  * @param  gpio_pin: è§¦å‘ä¸­æ–­çš„å¼•è„šç¼–å·
+  * @retval æ— 
+  * @note   åœ¨ä¸­æ–­å›è°ƒä¸­åªç½®ä½æŒ‰é”®äº‹ä»¶æ ‡å¿—
+  */
+void Key_EXTI_Callback(uint16_t gpio_pin);
+
+/**
+  * @brief  è·å–æŒ‰é”®äº‹ä»¶å¹¶æ¸…é›¶
+  * @param  æ— 
+  * @retval 1-æ£€æµ‹åˆ°æŒ‰é”®äº‹ä»¶, 0-æ— æŒ‰é”®äº‹ä»¶
+  */
+uint8_t Key_GetEventAndClear(void);
 
 #endif
-

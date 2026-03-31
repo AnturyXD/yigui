@@ -1,171 +1,58 @@
-#include "bsp_Key.h"
+ï»¿#include "bsp_Key.h"
 
-// ÉùÃ÷±¾µØº¯Êı
-static void key_1_Init(void);                                     // ÉùÃ÷key_1³õÊ¼»¯º¯Êı; staticÊÇĞŞ¸Äº¯ÊıµÄÓĞĞ§·¶Î§£º´Ó¶¨ÒåÉùÃ÷Î»ÖÃÆğ£¬Ô´ÎÄ¼şÄÚ¿É·ÃÎÊ;
-static void key_2_Init(void);                                     // ÉùÃ÷key_2³õÊ¼»¯º¯Êı; staticÊÇĞŞ¸Äº¯ÊıµÄÓĞĞ§·¶Î§£º´Ó¶¨ÒåÉùÃ÷Î»ÖÃÆğ£¬Ô´ÎÄ¼şÄÚ¿É·ÃÎÊ;
-static void key_3_Init(void);                                     // ÉùÃ÷key_3³õÊ¼»¯º¯Êı; staticÊÇĞŞ¸Äº¯ÊıµÄÓĞĞ§·¶Î§£º´Ó¶¨ÒåÉùÃ÷Î»ÖÃÆğ£¬Ô´ÎÄ¼şÄÚ¿É·ÃÎÊ;
+/* æŒ‰é”®äº‹ä»¶æ ‡å¿—ï¼šä¸­æ–­ç½®1ï¼Œä¸»å¾ªç¯è¯»å–åæ¸…é›¶ */
+static volatile uint8_t g_key_event_flag = 0U;
 
-
-// °´¼ü_1µÄ³õÊ¼»¯º¯Êı
-static void key_1_Init(void)
-{
-    GPIO_InitTypeDef GPIO_InitStructure;                          // ¶¨ÒåGPIO½á¹¹Ìå£¬ÓÃÓÚÅäÖÃÒı½Å¹¤×÷Ä£Ê½
-    EXTI_InitTypeDef EXTI_InitStructure;                          // ¶¨ÒåEXTI½á¹¹Ìå£¬ÓÃÓÚÅäÖÃÍâ²¿ÖĞ¶ÏÏß£¬¼´Òı½ÅµÄÖĞ¶Ï·½Ê½
-    NVIC_InitTypeDef NVIC_InitStructure;                          // ¶¨ÒåNVIC½á¹¹Ìå£¬ÓÃÓÚÅäÖÃÖĞ¶ÏÓÅÏÈ¼¶
-
-    // Ê±ÖÓÊ¹ÄÜ
-    RCC_AHB1PeriphClockCmd(KEY_1_CLK, ENABLE);                    // Ê¹ÄÜKEY_1ËùÓÃÒı½Å¶Ë¿ÚÊ±ÖÓ
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);        // Ê¹ÄÜÏµÍ³ÅäÖÃÆ÷SYSCFGµÄÊ±ÖÓ£¬Ê¹ÓÃGPIOÍâ²¿ÖĞ¶Ï±ØĞëÊ¹ÄÜSYSCFGÊ±ÖÓ
-
-    // ÅäÖÃÒı½Å¹¤×÷Ä£Ê½: PA0¡¢ ÊäÈë¡¢ÏĞÊ±ÏÂÀ­¡¢°´ÏÂÖÃ¸ßµçÆ½
-    GPIO_InitStructure.GPIO_Pin   = KEY_1_PIN;                    // Ñ¡ÔñÒª¿ØÖÆµÄÒı½Å±àºÅ; ´Ë´¦Ê¹ÓÃÁËºê¶¨Òå£¬ÒÔ·½±ãÒÆÖ²ĞŞ¸Ä
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN;                 // Òı½ÅÄ£Ê½£ºÊäÈëÄ£Ê½
-    GPIO_InitStructure.GPIO_PuPd  = KEY_1_PUPD;                   // ÉÏÏÂÀ­×´Ì¬
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;              // Òı½ÅËÙÂÊ£º2MHz
-    GPIO_Init(KEY_1_GPIO, &GPIO_InitStructure);                   // ³õÊ¼»¯, ¼´°ÑÉÏÃæµÄ²ÎÊıĞ´Èë¼Ä´æÆ÷
-
-    // °ÑÒı½ÅÁ¬½ÓÖÁÖĞ¶ÏÏß
-    SYSCFG_EXTILineConfig(KEY_1_EXTI_PORT, KEY_1_EXTI_PIN);       // °ÑÒı½ÅÁ¬½ÓÖÁÖĞ¶ÏÏß
-
-    // ÅäÖÃEXTIÖĞ¶ÏÏß
-    EXTI_InitStructure.EXTI_Line = KEY_1_EXTI_LINE;               // ÖĞ¶ÏÏß
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;           // ÖĞ¶ÏÄ£Ê½
-    EXTI_InitStructure.EXTI_Trigger = KEY_1_EXTI_TRIGGER;         // ´¥·¢·½Ê½
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;                     // Ê¹ÄÜ
-    EXTI_Init(&EXTI_InitStructure);                               // ³õÊ¼»¯, ¼´°ÑÉÏÃæµÄ²ÎÊıĞ´Èë¼Ä´æÆ÷
-
-    // ÅäÖÃ NVIC, ¼´ÖĞ¶ÏÓÅÏÈ¼¶
-    // NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);            // ÅäÖÃNVICÎªÓÅÏÈ¼¶×é2; ±¾ÉèÖÃÕû¸ö¹¤³ÌÖ»ĞèÅäÖÃÒ»´Î£¬È«¾ÖÓĞĞ§; Èç¹û¶à´ÎÅäÖÃ£¬ÔËĞĞÊ±ÒÔ×îºóÒ»´ÎÅäÖÃÎª×¼; ½¨Òé°ÑÕâ¸öÅäÖÃ·ÅÔÚmainº¯ÊıµÚÒ»ĞĞ;
-    NVIC_InitStructure.NVIC_IRQChannel = KEY_1_INTERRUPT_NUMBER;  // ÖĞ¶Ï±àºÅ£¬ÌáÊ¾£º¸÷ÖÖÖĞ¶ÏµÄ±àºÅ£¬ÊÇÔÚÆô¶¯ÎÄ¼şÖĞ£¬°´Ğ¾Æ¬ÄÚ²¿Éè¼Æ¶øÔ¤ÏÈÉè¶¨ºÃµÄ±àºÅµÄ¡£
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;     // ÇÀÕ¼ÓÅÏÈ¼¶
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;            // ×ÓÓÅÏÈ¼¶
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;               // Ê¹ÄÜ
-    NVIC_Init(&NVIC_InitStructure);                               // ³õÊ¼»¯, ¼´ÉÏÃæµÄ²ÎÊıĞ´Èë¼Ä´æÆ÷
-}
-
-
-
-// KEY_1ËùÓÃÒı½ÅµÄÖĞ¶Ïº¯Êı; ÕâÀïÊ¹ÓÃÁËºê¶¨ÒåÃû³Æ£¬ÒÔ·½±ãÒÆÖ²
-void KEY_1_IRQHANDLER(void)
-{
-    EXTI_ClearITPendingBit(EXTI_Line0);                           // Çå³ıÖĞ¶Ï±êÖ¾Î»;
-    LED_RED_TOGGLE ;                                              // ·´×ªºìÉ«LED
-    printf("µÚ 1 ¸ö°´¼ü±»°´ÏÂ, À¶µÆ·´×ª\r");                      // ÖØÒªÌáÊ¾£ºprintfÊÇ²»¿ÉÖØÈëº¯Êı£¬ÖĞ¶Ï·şÎñº¯ÊıÖĞÊ¹ÓÃ£¬¿ÉÄÜ»á²úÉú²»¿ÉÔ¤²âµÄ´íÎó¡£ÕâÀïÊ¹ÓÃprintf£¬Ö»ÓÃ´úÂë²âÊÔÊ¹ÓÃ£¡£¡      // Ä§Å®¿ª·¢°åµÄ°´¼üÊ¹ÓÃµçÈİ½øĞĞÓ²¼şÏû¶¶,ÎŞĞèÔÙÊ¹ÓÃÈí¼şÑÓÊ±Ïû¶¶
-    printf("²âÊÔÉÏ±¨Êı¾İ£¬ÎÂ¶È+0.5£¬Êª¶È+0.3\r\r");
-}
-
-
-
-// °´¼ü_2µÄ³õÊ¼»¯º¯Êı
-static void key_2_Init(void)
-{
-    GPIO_InitTypeDef GPIO_InitStructure;                          // ¶¨ÒåGPIO½á¹¹Ìå£¬ÓÃÓÚÅäÖÃÒı½Å¹¤×÷Ä£Ê½
-    EXTI_InitTypeDef EXTI_InitStructure;                          // ¶¨ÒåEXTI½á¹¹Ìå£¬ÓÃÓÚÅäÖÃÍâ²¿ÖĞ¶ÏÏß£¬¼´Òı½ÅµÄÖĞ¶Ï·½Ê½
-    NVIC_InitTypeDef NVIC_InitStructure;                          // ¶¨ÒåNVIC½á¹¹Ìå£¬ÓÃÓÚÅäÖÃÖĞ¶ÏÓÅÏÈ¼¶
-
-    // Ê±ÖÓÊ¹ÄÜ
-    RCC_AHB1PeriphClockCmd(KEY_2_CLK, ENABLE);                    // Ê¹ÄÜKEY_1ËùÓÃÒı½Å¶Ë¿ÚÊ±ÖÓ
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);        // Ê¹ÄÜÏµÍ³ÅäÖÃÆ÷SYSCFGµÄÊ±ÖÓ£¬Ê¹ÓÃGPIOÍâ²¿ÖĞ¶Ï±ØĞëÊ¹ÄÜSYSCFGÊ±ÖÓ
-
-    // ÅäÖÃÒı½Å¹¤×÷Ä£Ê½: PA0¡¢ ÊäÈë¡¢ÏĞÊ±ÏÂÀ­¡¢°´ÏÂÖÃ¸ßµçÆ½
-    GPIO_InitStructure.GPIO_Pin   = KEY_2_PIN;                    // Ñ¡ÔñÒª¿ØÖÆµÄÒı½Å±àºÅ; ´Ë´¦Ê¹ÓÃÁËºê¶¨Òå£¬ÒÔ·½±ãÒÆÖ²ĞŞ¸Ä
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN;                 // Òı½ÅÄ£Ê½£ºÊäÈëÄ£Ê½
-    GPIO_InitStructure.GPIO_PuPd  = KEY_2_PUPD;                   // ÉÏÏÂÀ­×´Ì¬
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;              // Òı½ÅËÙÂÊ£º2MHz
-    GPIO_Init(KEY_2_GPIO, &GPIO_InitStructure);                   // ³õÊ¼»¯, ¼´°ÑÉÏÃæµÄ²ÎÊıĞ´Èë¼Ä´æÆ÷
-
-    // °ÑÒı½ÅÁ¬½ÓÖÁÖĞ¶ÏÏß
-    SYSCFG_EXTILineConfig(KEY_2_EXTI_PORT, KEY_2_EXTI_PIN);       // °ÑÒı½ÅÁ¬½ÓÖÁÖĞ¶ÏÏß
-
-    // ÅäÖÃEXTIÖĞ¶ÏÏß
-    EXTI_InitStructure.EXTI_Line = KEY_2_EXTI_LINE;               // ÖĞ¶ÏÏß
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;           // ÖĞ¶ÏÄ£Ê½
-    EXTI_InitStructure.EXTI_Trigger = KEY_2_EXTI_TRIGGER;         // ´¥·¢·½Ê½
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;                     // Ê¹ÄÜ
-    EXTI_Init(&EXTI_InitStructure);                               // ³õÊ¼»¯, ¼´°ÑÉÏÃæµÄ²ÎÊıĞ´Èë¼Ä´æÆ÷
-
-    // ÅäÖÃ NVIC, ¼´ÖĞ¶ÏÓÅÏÈ¼¶
-    // NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);            // ÅäÖÃNVICÎªÓÅÏÈ¼¶×é2; ±¾ÉèÖÃÕû¸ö¹¤³ÌÖ»ĞèÅäÖÃÒ»´Î£¬È«¾ÖÓĞĞ§; Èç¹û¶à´ÎÅäÖÃ£¬ÔËĞĞÊ±ÒÔ×îºóÒ»´ÎÅäÖÃÎª×¼; ½¨Òé°ÑÕâ¸öÅäÖÃ·ÅÔÚmainº¯ÊıµÚÒ»ĞĞ;
-    NVIC_InitStructure.NVIC_IRQChannel = KEY_2_INTERRUPT_NUMBER;  // ÖĞ¶Ï±àºÅ£¬ÌáÊ¾£º¸÷ÖÖÖĞ¶ÏµÄ±àºÅ£¬ÊÇÔÚÆô¶¯ÎÄ¼şÖĞ£¬°´Ğ¾Æ¬ÄÚ²¿Éè¼Æ¶øÔ¤ÏÈÉè¶¨ºÃµÄ±àºÅµÄ¡£
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;     // ÇÀÕ¼ÓÅÏÈ¼¶
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;            // ×ÓÓÅÏÈ¼¶
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;               // Ê¹ÄÜ
-    NVIC_Init(&NVIC_InitStructure);                               // ³õÊ¼»¯, ¼´ÉÏÃæµÄ²ÎÊıĞ´Èë¼Ä´æÆ÷
-}
-
-
-
-// °´¼ü_2ËùÓÃÒı½ÅµÄÖĞ¶Ïº¯Êı; ÕâÀïÊ¹ÓÃÁËºê¶¨ÒåÃû³Æ£¬ÒÔ·½±ãÒÆÖ²
-void KEY_2_IRQHANDLER(void)
-{
-    EXTI_ClearITPendingBit(KEY_2_EXTI_LINE);                      // Çå³ıÖĞ¶Ï±êÖ¾Î»;
-    LED_RED_TOGGLE;                                               // ·´×ªºìÉ«LED
-    printf("µÚ 2 ¸ö°´¼ü±»°´ÏÂ, À¶µÆ·´×ª\r");                      // ÖØÒªÌáÊ¾£ºprintfÊÇ²»¿ÉÖØÈëº¯Êı£¬ÖĞ¶Ï·şÎñº¯ÊıÖĞÊ¹ÓÃ£¬¿ÉÄÜ»á²úÉú²»¿ÉÔ¤²âµÄ´íÎó¡£ÕâÀïÊ¹ÓÃprintf£¬Ö»ÓÃ´úÂë²âÊÔÊ¹ÓÃ£¡£¡      // Ä§Å®¿ª·¢°åµÄ°´¼üÊ¹ÓÃµçÈİ½øĞĞÓ²¼şÏû¶¶,ÎŞĞèÔÙÊ¹ÓÃÈí¼şÑÓÊ±Ïû¶¶
-}
-
-
-
-// °´¼ü_3µÄ³õÊ¼»¯º¯Êı
-static void key_3_Init(void)
-{
-    GPIO_InitTypeDef GPIO_InitStructure;                          // ¶¨ÒåGPIO½á¹¹Ìå£¬ÓÃÓÚÅäÖÃÒı½Å¹¤×÷Ä£Ê½
-    EXTI_InitTypeDef EXTI_InitStructure;                          // ¶¨ÒåEXTI½á¹¹Ìå£¬ÓÃÓÚÅäÖÃÍâ²¿ÖĞ¶ÏÏß£¬¼´Òı½ÅµÄÖĞ¶Ï·½Ê½
-    NVIC_InitTypeDef NVIC_InitStructure;                          // ¶¨ÒåNVIC½á¹¹Ìå£¬ÓÃÓÚÅäÖÃÖĞ¶ÏÓÅÏÈ¼¶
-
-    // Ê±ÖÓÊ¹ÄÜ
-    RCC_AHB1PeriphClockCmd(KEY_3_CLK, ENABLE);                    // Ê¹ÄÜKEY_1ËùÓÃÒı½Å¶Ë¿ÚÊ±ÖÓ
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);        // Ê¹ÄÜÏµÍ³ÅäÖÃÆ÷SYSCFGµÄÊ±ÖÓ£¬Ê¹ÓÃGPIOÍâ²¿ÖĞ¶Ï±ØĞëÊ¹ÄÜSYSCFGÊ±ÖÓ
-
-    // ÅäÖÃÒı½Å¹¤×÷Ä£Ê½: PA0¡¢ ÊäÈë¡¢ÏĞÊ±ÏÂÀ­¡¢°´ÏÂÖÃ¸ßµçÆ½
-    GPIO_InitStructure.GPIO_Pin   = KEY_3_PIN;                    // Ñ¡ÔñÒª¿ØÖÆµÄÒı½Å±àºÅ; ´Ë´¦Ê¹ÓÃÁËºê¶¨Òå£¬ÒÔ·½±ãÒÆÖ²ĞŞ¸Ä
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN;                 // Òı½ÅÄ£Ê½£ºÊäÈëÄ£Ê½
-    GPIO_InitStructure.GPIO_PuPd  = KEY_3_PUPD;                   // ÉÏÏÂÀ­×´Ì¬
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;              // Òı½ÅËÙÂÊ£º2MHz
-    GPIO_Init(KEY_3_GPIO, &GPIO_InitStructure);                   // ³õÊ¼»¯, ¼´°ÑÉÏÃæµÄ²ÎÊıĞ´Èë¼Ä´æÆ÷
-
-    // °ÑÒı½ÅÁ¬½ÓÖÁÖĞ¶ÏÏß
-    SYSCFG_EXTILineConfig(KEY_3_EXTI_PORT, KEY_3_EXTI_PIN);       // °ÑÒı½ÅÁ¬½ÓÖÁÖĞ¶ÏÏß
-
-    // ÅäÖÃEXTIÖĞ¶ÏÏß
-    EXTI_InitStructure.EXTI_Line = KEY_3_EXTI_LINE;               // ÖĞ¶ÏÏß
-    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;           // ÖĞ¶ÏÄ£Ê½
-    EXTI_InitStructure.EXTI_Trigger = KEY_3_EXTI_TRIGGER;         // ´¥·¢·½Ê½
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;                     // Ê¹ÄÜ
-    EXTI_Init(&EXTI_InitStructure);                               // ³õÊ¼»¯, ¼´°ÑÉÏÃæµÄ²ÎÊıĞ´Èë¼Ä´æÆ÷
-
-    // ÅäÖÃ NVIC, ¼´ÖĞ¶ÏÓÅÏÈ¼¶
-    // NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);            // ÅäÖÃNVICÎªÓÅÏÈ¼¶×é2; ±¾ÉèÖÃÕû¸ö¹¤³ÌÖ»ĞèÅäÖÃÒ»´Î£¬È«¾ÖÓĞĞ§; Èç¹û¶à´ÎÅäÖÃ£¬ÔËĞĞÊ±ÒÔ×îºóÒ»´ÎÅäÖÃÎª×¼; ½¨Òé°ÑÕâ¸öÅäÖÃ·ÅÔÚmainº¯ÊıµÚÒ»ĞĞ;
-    NVIC_InitStructure.NVIC_IRQChannel = KEY_3_INTERRUPT_NUMBER;  // ÖĞ¶Ï±àºÅ£¬ÌáÊ¾£º¸÷ÖÖÖĞ¶ÏµÄ±àºÅ£¬ÊÇÔÚÆô¶¯ÎÄ¼şÖĞ£¬°´Ğ¾Æ¬ÄÚ²¿Éè¼Æ¶øÔ¤ÏÈÉè¶¨ºÃµÄ±àºÅµÄ¡£
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;     // ÇÀÕ¼ÓÅÏÈ¼¶
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;            // ×ÓÓÅÏÈ¼¶
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;               // Ê¹ÄÜ
-    NVIC_Init(&NVIC_InitStructure);                               // ³õÊ¼»¯, ¼´ÉÏÃæµÄ²ÎÊıĞ´Èë¼Ä´æÆ÷
-}
-
-
-
-// °´¼ü_3ËùÓÃÒı½ÅµÄÖĞ¶Ïº¯Êı; ÕâÀïÊ¹ÓÃÁËºê¶¨ÒåÃû³Æ£¬ÒÔ·½±ãÒÆÖ²
-void KEY_3_IRQHANDLER(void)
-{
-    LED_RED_TOGGLE;                                               // ·´×ªºìÉ«LED
-    printf("µÚ 3 ¸ö°´¼ü±»°´ÏÂ, À¶µÆ·´×ª\r");                      // ÖØÒªÌáÊ¾£ºprintfÊÇ²»¿ÉÖØÈëº¯Êı£¬ÖĞ¶Ï·şÎñº¯ÊıÖĞÊ¹ÓÃ£¬¿ÉÄÜ»á²úÉú²»¿ÉÔ¤²âµÄ´íÎó¡£ÕâÀïÊ¹ÓÃprintf£¬Ö»ÓÃ´úÂë²âÊÔÊ¹ÓÃ£¡£¡      // Ä§Å®¿ª·¢°åµÄ°´¼üÊ¹ÓÃµçÈİ½øĞĞÓ²¼şÏû¶¶,ÎŞĞèÔÙÊ¹ÓÃÈí¼şÑÓÊ±Ïû¶¶
-    EXTI_ClearITPendingBit(KEY_3_EXTI_LINE);                      // Çå³ıÖĞ¶Ï±êÖ¾Î»;EXTI_Line4
-}
-
-
-
-/******************************************************************************
- * º¯  Êı£º Key_Init
- * ¹¦  ÄÜ£º ³õÊ¼»¯°´¼ü
- * ²Î  Êı£º ÎŞ
- * ·µ»ØÖµ£º ÎŞ
- ******************************************************************************/
+/**
+  * @brief  æŒ‰é”®é©±åŠ¨åˆå§‹åŒ–å‡½æ•°
+  * @param  æ— 
+  * @retval æ— 
+  * @note   é…ç½®PA0ä¸ºä¸Šå‡æ²¿å¤–éƒ¨ä¸­æ–­è¾“å…¥
+  */
 void Key_Init(void)
 {
-    key_1_Init();
-    key_2_Init();
-    key_3_Init();
-    printf("°´¼ü ³õÊ¼»¯              ÅäÖÃÍê³É\r");
+    GPIO_InitTypeDef gpio_init_struct = {0};
+
+    /* ä½¿èƒ½æŒ‰é”®GPIOç«¯å£æ—¶é’Ÿ */
+    KEY_1_GPIO_CLK_ENABLE();
+
+    /* é…ç½®PA0ä¸ºä¸­æ–­è¾“å…¥ï¼Œé—²æ—¶ä¸‹æ‹‰ï¼ŒæŒ‰ä¸‹é«˜ç”µå¹³ */
+    gpio_init_struct.Pin = KEY_1_GPIO_PIN;
+    gpio_init_struct.Mode = GPIO_MODE_IT_RISING;
+    gpio_init_struct.Pull = GPIO_PULLDOWN;
+    gpio_init_struct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(KEY_1_GPIO_PORT, &gpio_init_struct);
+
+    /* é…ç½®å¹¶ä½¿èƒ½EXTI0ä¸­æ–­ */
+    HAL_NVIC_SetPriority(KEY_1_EXTI_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(KEY_1_EXTI_IRQn);
 }
 
+/**
+  * @brief  æŒ‰é”®ä¸­æ–­å›è°ƒå¤„ç†å‡½æ•°
+  * @param  gpio_pin: è§¦å‘ä¸­æ–­çš„å¼•è„šç¼–å·
+  * @retval æ— 
+  * @note   åœ¨ä¸­æ–­ä¸­åªç½®ä½äº‹ä»¶æ ‡å¿—
+  */
+void Key_EXTI_Callback(uint16_t gpio_pin)
+{
+    if (gpio_pin == KEY_1_GPIO_PIN)
+    {
+        g_key_event_flag = 1U;
+    }
+}
 
+/**
+  * @brief  è·å–æŒ‰é”®äº‹ä»¶å¹¶æ¸…é›¶
+  * @param  æ— 
+  * @retval 1-æ£€æµ‹åˆ°æŒ‰é”®äº‹ä»¶, 0-æ— æŒ‰é”®äº‹ä»¶
+  */
+uint8_t Key_GetEventAndClear(void)
+{
+    uint8_t key_event;
+
+    key_event = g_key_event_flag;
+    g_key_event_flag = 0U;
+
+    return key_event;
+}

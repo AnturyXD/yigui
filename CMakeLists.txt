@@ -53,7 +53,11 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Bsp/UART/bsp_UART.c
         Bsp/OLED_0.96_4P/bsp_OLED.c
         Bsp/DHT11/dht11.c
+        Bsp/KEY/bsp_Key.c
         Bsp/W25Q128/bsp_W25Q128.c
+        Core/Src/app_led.c
+        Core/Src/app_pir.c
+        Core/Src/app_servo.c
         
 
 
@@ -65,6 +69,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
         Bsp/UART
         Bsp/DHT11
+        Bsp/KEY
+        Bsp/LED
         Bsp/OLED_0.96_4P
         Bsp/W25Q128
 

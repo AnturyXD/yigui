@@ -1,126 +1,338 @@
-#include "main.h"
+﻿#include "main.h"
 #include "usart.h"
 #include "gpio.h"
 
 #include <stdio.h>
-#include <string.h>
 
 #include "bsp_UART.h"
 #include "bsp_OLED.h"
 #include "dht11.h"
-#include "stm32f4xx_hal_tim.h"
+#include "bsp_Key.h"
+
+#include "app_led.h"
+#include "app_pir.h"
+#include "app_servo.h"
+
+/******************************************************************************
+ * 文件名称: main.c
+ * 功能说明: 智能衣柜系统主业务文件
+ *
+ * 代码说明:
+ * 1. 所有外设驱动均独立在对应模块文件中
+ * 2. 主循环只做任务调度，不直接写复杂硬件操作
+ * 3. 中断回调只做事件置位，不做延时和复杂逻辑
+ ******************************************************************************/
 
 void SystemClock_Config(void);
 
-static void PIR_Init(void);
-static uint8_t PIR_IsDetected(void);
-static void MQ135_Init(void);
-static uint8_t MQ135_IsPolluted(void);
-static void Servo_Init(void);
-static void Servo_SetAngle(uint32_t channel, uint8_t angle);
-static void Door_SetState(uint8_t open);
-static void App_ShowDataOnOLED(uint8_t temp, uint8_t humi, uint8_t ok, uint8_t mqPolluted);
+/**
+  * @brief  应用层初始化函数
+  * @param  无
+  * @retval 无
+  * @note   负责初始化业务所需全部外设模块
+  */
+static void APP_Init(void);
 
-/* 人体红外模块引脚（可按接线修改） */
-#define PIR_GPIO_PORT GPIOA
-#define PIR_GPIO_PIN  GPIO_PIN_1
-#define PIR_ACTIVE_LEVEL GPIO_PIN_SET
+/**
+  * @brief  处理按键事件任务
+  * @param  无
+  * @retval 无
+  * @note   有按键事件时切换柜门状态
+  */
+static void APP_TaskProcessKeyEvent(void);
 
-/* MQ135 (DO digital output) */
-#define MQ135_GPIO_PORT GPIOC
-#define MQ135_GPIO_PIN  GPIO_PIN_4
-#define MQ135_POLLUTED_LEVEL GPIO_PIN_RESET
+/**
+  * @brief  采集传感器任务
+  * @param  无
+  * @retval 无
+  * @note   周期读取人体红外状态与温湿度数据
+  */
+static void APP_TaskSampleSensors(void);
 
-/* Key input: PA0 rising edge as press event */
-#define KEY0_GPIO_PORT GPIOA
-#define KEY0_GPIO_PIN  GPIO_PIN_0
+/**
+  * @brief  更新执行器任务
+  * @param  无
+  * @retval 无
+  * @note   根据当前状态更新红灯显示
+  */
+static void APP_TaskUpdateActuator(void);
 
-/* Servo PWM output: TIM2 CH3(PA2), CH4(PA3), 50Hz */
-#define SERVO_TIMER TIM2
-#define SERVO_CH_LEFT  TIM_CHANNEL_3
-#define SERVO_CH_RIGHT TIM_CHANNEL_4
+/**
+  * @brief  串口打印任务
+  * @param  无
+  * @retval 无
+  * @note   将关键状态通过USART1输出
+  */
+static void APP_TaskReportUart(void);
 
-/* Door angle config (0~90) */
-#define DOOR_ANGLE_CLOSE 0
-#define DOOR_ANGLE_OPEN  90
+/**
+  * @brief  OLED刷新任务
+  * @param  无
+  * @retval 无
+  * @note   使用局部刷新减少屏幕闪烁
+  */
+static void APP_TaskUpdateOLED(void);
 
-static TIM_HandleTypeDef htim2;
-static volatile uint8_t g_key0_irq_event = 0;
+/* 全局状态标志：按规范使用volatile */
+static volatile uint8_t g_door_open_state = 0U;   /* 柜门状态：0关门，1开门 */
+static volatile uint8_t g_pir_detected = 0U;      /* 人体红外状态：1检测到人体 */
+static volatile uint8_t g_dht_online = 0U;        /* DHT11在线标志：1初始化成功 */
+static volatile uint8_t g_dht_ok = 0U;            /* DHT11本次读取状态：1成功 */
+static volatile uint8_t g_temp_value = 0U;        /* 温度值 */
+static volatile uint8_t g_humi_value = 0U;        /* 湿度值 */
 
 int main(void)
 {
-    uint8_t temp = 0;
-    uint8_t humi = 0;
-    uint8_t dhtInitOk = 0;
-    uint8_t lastPir = 0xFF;
-    uint8_t doorOpen = 0;
-
     HAL_Init();
     SystemClock_Config();
 
+    /* CubeMX基础初始化 */
     MX_GPIO_Init();
     MX_USART1_UART_Init();
 
-    UART1_Init(115200);
-    OLED_Init();
-    OLED_Clear();
-    PIR_Init();
-    MQ135_Init();
-    Servo_Init();
-    Door_SetState(0);
-
-    if (DHT11_Init() == 0)
-    {
-        dhtInitOk = 1;
-        printf("DHT11 init ok\r\n");
-    }
-    else
-    {
-        printf("DHT11 init fail\r\n");
-    }
+    /* 业务模块初始化 */
+    APP_Init();
 
     while (1)
     {
-        uint8_t readOk = 0;
-        uint8_t pirDetected = PIR_IsDetected();
-        uint8_t mqPolluted = MQ135_IsPolluted();
+        /* 任务1：按键事件处理 */
+        APP_TaskProcessKeyEvent();
 
-        if (g_key0_irq_event)
-        {
-            g_key0_irq_event = 0;
-            doorOpen = (uint8_t)!doorOpen;
-            Door_SetState(doorOpen);
-            printf("DOOR=%s\r\n", doorOpen ? "OPEN" : "CLOSE");
-        }
+        /* 任务2：传感器采样 */
+        APP_TaskSampleSensors();
 
-        if (dhtInitOk && (DHT11_Read_Data(&temp, &humi) == 0))
-        {
-            readOk = 1;
-            printf("TEMP=%uC HUMI=%u%% AQ=%s PIR=%s\r\n",
-                   temp, humi, mqPolluted ? "BAD" : "GOOD", pirDetected ? "DETECTED" : "IDLE");
-        }
-        else
-        {
-            printf("DHT11 read fail AQ=%s PIR=%s\r\n",
-                   mqPolluted ? "BAD" : "GOOD", pirDetected ? "DETECTED" : "IDLE");
-        }
+        /* 任务3：执行器更新 */
+        APP_TaskUpdateActuator();
 
-        /* PC5 低电平点亮：检测到人体时亮灯 */
-        HAL_GPIO_WritePin(LED_RED_GPIO_Port, LED_RED_Pin, pirDetected ? GPIO_PIN_RESET : GPIO_PIN_SET);
+        /* 任务4：串口输出 */
+        APP_TaskReportUart();
 
-        /* PIR状态变化时补充提示 */
-        if (pirDetected != lastPir)
-        {
-            lastPir = pirDetected;
-            printf("PIR %s\r\n", pirDetected ? "DETECTED" : "IDLE");
-        }
+        /* 任务5：OLED显示 */
+        APP_TaskUpdateOLED();
 
-        App_ShowDataOnOLED(temp, humi, readOk, mqPolluted);
-        HAL_GPIO_TogglePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin);
+        /* 任务6：系统心跳灯翻转 */
+        APP_LED_ToggleHeartbeat();
+
         HAL_Delay(1000);
     }
 }
 
+/**
+  * @brief  应用层初始化函数
+  * @param  无
+  * @retval 无
+  * @note   完成串口、OLED、按键、红外、舵机、DHT11初始化
+  */
+static void APP_Init(void)
+{
+    /* 串口驱动初始化：115200波特率 */
+    UART1_Init(115200);
+
+    /* OLED驱动初始化 */
+    OLED_Init();
+    OLED_Clear();
+
+    /* LED驱动初始化 */
+    APP_LED_Init();
+
+    /* 按键驱动初始化 */
+    Key_Init();
+
+    /* 人体红外驱动初始化 */
+    APP_PIR_Init();
+
+    /* 舵机驱动初始化并默认关门 */
+    APP_SERVO_Init();
+    APP_SERVO_SetDoorState(0U);
+    g_door_open_state = 0U;
+
+    /* DHT11驱动初始化 */
+    if (DHT11_Init() == 0U)
+    {
+        g_dht_online = 1U;
+        printf("DHT11 init ok\r\n");
+    }
+    else
+    {
+        g_dht_online = 0U;
+        printf("DHT11 init fail\r\n");
+    }
+}
+
+/**
+  * @brief  处理按键事件任务
+  * @param  无
+  * @retval 无
+  * @note   每次按键事件切换一次柜门状态
+  */
+static void APP_TaskProcessKeyEvent(void)
+{
+    /* 读取并清除按键事件标志 */
+    if (Key_GetEventAndClear() == 0U)
+    {
+        return;
+    }
+
+    /* 反转柜门状态 */
+    g_door_open_state = (uint8_t)!g_door_open_state;
+
+    /* 更新舵机门状态 */
+    APP_SERVO_SetDoorState(g_door_open_state);
+
+    /* 串口打印门状态 */
+    printf("DOOR=%s\r\n", g_door_open_state ? "OPEN" : "CLOSE");
+}
+
+/**
+  * @brief  采集传感器任务
+  * @param  无
+  * @retval 无
+  * @note   读取PIR与DHT11
+  */
+static void APP_TaskSampleSensors(void)
+{
+    /* 读取人体红外状态 */
+    g_pir_detected = APP_PIR_ReadState();
+
+    /* 读取温湿度数据 */
+    if (g_dht_online == 1U)
+    {
+        if (DHT11_Read_Data((uint8_t *)&g_temp_value, (uint8_t *)&g_humi_value) == 0U)
+        {
+            g_dht_ok = 1U;
+        }
+        else
+        {
+            g_dht_ok = 0U;
+        }
+    }
+    else
+    {
+        g_dht_ok = 0U;
+    }
+}
+
+/**
+  * @brief  更新执行器任务
+  * @param  无
+  * @retval 无
+  * @note   根据人体红外状态控制红灯
+  */
+static void APP_TaskUpdateActuator(void)
+{
+    APP_LED_SetPIRIndicator(g_pir_detected);
+}
+
+/**
+  * @brief  串口打印任务
+  * @param  无
+  * @retval 无
+  * @note   打印温湿度与人体红外状态
+  */
+static void APP_TaskReportUart(void)
+{
+    static uint8_t last_pir_state = 0xFFU;  /* 记录上一次PIR状态，仅变化时提示 */
+
+    if (g_dht_ok == 1U)
+    {
+        printf("TEMP=%uC HUMI=%u%% PIR=%s\r\n",
+               g_temp_value,
+               g_humi_value,
+               g_pir_detected ? "DETECTED" : "IDLE");
+    }
+    else
+    {
+        printf("DHT11 read fail PIR=%s\r\n",
+               g_pir_detected ? "DETECTED" : "IDLE");
+    }
+
+    /* PIR状态变化时额外打印 */
+    if (last_pir_state != g_pir_detected)
+    {
+        last_pir_state = g_pir_detected;
+        printf("PIR %s\r\n", g_pir_detected ? "DETECTED" : "IDLE");
+    }
+}
+
+/**
+  * @brief  OLED刷新任务
+  * @param  无
+  * @retval 无
+  * @note   仅刷新变化区域，降低闪烁
+  */
+static void APP_TaskUpdateOLED(void)
+{
+    static uint8_t oled_inited = 0U;         /* OLED模板是否已绘制 */
+    static uint8_t last_temp = 0xFFU;        /* 上次温度值 */
+    static uint8_t last_humi = 0xFFU;        /* 上次湿度值 */
+    static uint8_t last_dht_ok = 0xFFU;      /* 上次DHT读取状态 */
+    static uint8_t last_pir = 0xFFU;         /* 上次PIR状态 */
+    char text_buffer[20] = {0};              /* 显示字符串缓冲区 */
+
+    /* 首次进入时绘制固定标签 */
+    if (oled_inited == 0U)
+    {
+        oled_inited = 1U;
+        OLED_Clear();
+        OLED_String(0, 0,  "TEMP:", 16);
+        OLED_String(0, 16, "HUMI:", 16);
+        OLED_String(0, 32, "PIR:", 16);
+    }
+
+    /* 温湿度显示刷新 */
+    if (g_dht_ok == 1U)
+    {
+        if ((last_dht_ok != 1U) || (last_temp != g_temp_value))
+        {
+            snprintf(text_buffer, sizeof(text_buffer), "%3uC   ", g_temp_value);
+            OLED_String(48, 0, text_buffer, 16);
+        }
+
+        if ((last_dht_ok != 1U) || (last_humi != g_humi_value))
+        {
+            snprintf(text_buffer, sizeof(text_buffer), "%3u%%   ", g_humi_value);
+            OLED_String(48, 16, text_buffer, 16);
+        }
+    }
+    else
+    {
+        if (last_dht_ok != 0U)
+        {
+            OLED_String(48, 0,  "--C    ", 16);
+            OLED_String(48, 16, "--%    ", 16);
+        }
+    }
+
+    /* PIR显示刷新 */
+    if (last_pir != g_pir_detected)
+    {
+        OLED_String(48, 32, g_pir_detected ? "DETECTED " : "IDLE     ", 16);
+    }
+
+    /* 保存本次状态，用于下次比较 */
+    last_temp = g_temp_value;
+    last_humi = g_humi_value;
+    last_dht_ok = g_dht_ok;
+    last_pir = g_pir_detected;
+}
+
+/**
+  * @brief  外部中断回调函数
+  * @param  GPIO_Pin: 中断来源引脚
+  * @retval 无
+  * @note   中断中仅调用按键驱动事件置位函数
+  */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    Key_EXTI_Callback(GPIO_Pin);
+}
+
+/**
+  * @brief  系统时钟配置函数
+  * @param  无
+  * @retval 无
+  * @note   配置系统时钟为168MHz
+  */
 void SystemClock_Config(void)
 {
     RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -155,166 +367,11 @@ void SystemClock_Config(void)
     }
 }
 
-static void PIR_Init(void)
-{
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-    if (PIR_GPIO_PORT == GPIOA) __HAL_RCC_GPIOA_CLK_ENABLE();
-    else if (PIR_GPIO_PORT == GPIOB) __HAL_RCC_GPIOB_CLK_ENABLE();
-    else if (PIR_GPIO_PORT == GPIOC) __HAL_RCC_GPIOC_CLK_ENABLE();
-    else if (PIR_GPIO_PORT == GPIOD) __HAL_RCC_GPIOD_CLK_ENABLE();
-    else if (PIR_GPIO_PORT == GPIOE) __HAL_RCC_GPIOE_CLK_ENABLE();
-    else if (PIR_GPIO_PORT == GPIOF) __HAL_RCC_GPIOF_CLK_ENABLE();
-    else if (PIR_GPIO_PORT == GPIOG) __HAL_RCC_GPIOG_CLK_ENABLE();
-
-    GPIO_InitStruct.Pin = PIR_GPIO_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(PIR_GPIO_PORT, &GPIO_InitStruct);
-}
-
-static uint8_t PIR_IsDetected(void)
-{
-    return (HAL_GPIO_ReadPin(PIR_GPIO_PORT, PIR_GPIO_PIN) == PIR_ACTIVE_LEVEL) ? 1U : 0U;
-}
-
-static void MQ135_Init(void)
-{
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-    if (MQ135_GPIO_PORT == GPIOA) __HAL_RCC_GPIOA_CLK_ENABLE();
-    else if (MQ135_GPIO_PORT == GPIOB) __HAL_RCC_GPIOB_CLK_ENABLE();
-    else if (MQ135_GPIO_PORT == GPIOC) __HAL_RCC_GPIOC_CLK_ENABLE();
-    else if (MQ135_GPIO_PORT == GPIOD) __HAL_RCC_GPIOD_CLK_ENABLE();
-    else if (MQ135_GPIO_PORT == GPIOE) __HAL_RCC_GPIOE_CLK_ENABLE();
-    else if (MQ135_GPIO_PORT == GPIOF) __HAL_RCC_GPIOF_CLK_ENABLE();
-    else if (MQ135_GPIO_PORT == GPIOG) __HAL_RCC_GPIOG_CLK_ENABLE();
-
-    GPIO_InitStruct.Pin = MQ135_GPIO_PIN;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(MQ135_GPIO_PORT, &GPIO_InitStruct);
-}
-
-static uint8_t MQ135_IsPolluted(void)
-{
-    return (HAL_GPIO_ReadPin(MQ135_GPIO_PORT, MQ135_GPIO_PIN) == MQ135_POLLUTED_LEVEL) ? 1U : 0U;
-}
-
-static void Servo_Init(void)
-{
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    TIM_OC_InitTypeDef sConfigOC = {0};
-
-    __HAL_RCC_TIM2_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-
-    /* PA2->TIM2_CH3, PA3->TIM2_CH4 */
-    GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_3;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    htim2.Instance = SERVO_TIMER;
-    htim2.Init.Prescaler = 84 - 1;    /* 84MHz/84 = 1MHz -> 1us */
-    htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim2.Init.Period = 20000 - 1;    /* 20ms -> 50Hz */
-    htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-    HAL_TIM_PWM_Init(&htim2);
-
-    sConfigOC.OCMode = TIM_OCMODE_PWM1;
-    sConfigOC.Pulse = 500;            /* default: 0 deg */
-    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-    HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, SERVO_CH_LEFT);
-    HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, SERVO_CH_RIGHT);
-
-    HAL_TIM_PWM_Start(&htim2, SERVO_CH_LEFT);
-    HAL_TIM_PWM_Start(&htim2, SERVO_CH_RIGHT);
-}
-
-static void Servo_SetAngle(uint32_t channel, uint8_t angle)
-{
-    uint32_t pulseUs;
-
-    if (angle > 90) angle = 90;
-
-    /* 0~90 deg -> 500~1500us */
-    pulseUs = 500U + ((uint32_t)angle * 1000U) / 90U;
-    __HAL_TIM_SET_COMPARE(&htim2, channel, pulseUs);
-}
-
-static void Door_SetState(uint8_t open)
-{
-    if (open)
-    {
-        /* Symmetric motion around cabinet center */
-        Servo_SetAngle(SERVO_CH_LEFT, DOOR_ANGLE_OPEN);
-        Servo_SetAngle(SERVO_CH_RIGHT, DOOR_ANGLE_CLOSE);
-    }
-    else
-    {
-        Servo_SetAngle(SERVO_CH_LEFT, DOOR_ANGLE_CLOSE);
-        Servo_SetAngle(SERVO_CH_RIGHT, DOOR_ANGLE_OPEN);
-    }
-}
-
-static void App_ShowDataOnOLED(uint8_t temp, uint8_t humi, uint8_t ok, uint8_t mqPolluted)
-{
-    static uint8_t inited = 0;
-    static uint8_t lastTemp = 0xFF;
-    static uint8_t lastHumi = 0xFF;
-    static uint8_t lastOk = 0xFF;
-    static uint8_t lastAQ = 0xFF;
-    char line[20] = {0};
-
-    if (!inited)
-    {
-        inited = 1;
-        OLED_Clear();
-        OLED_String(0, 0, "TEMP:", 16);
-        OLED_String(0, 16, "HUMI:", 16);
-        OLED_String(0, 32, "AQ:", 16);
-    }
-
-    if (ok)
-    {
-        if (lastOk != 1 || temp != lastTemp)
-        {
-            snprintf(line, sizeof(line), "%3uC   ", temp);
-            OLED_String(48, 0, line, 16);
-        }
-        if (lastOk != 1 || humi != lastHumi)
-        {
-            snprintf(line, sizeof(line), "%3u%%   ", humi);
-            OLED_String(48, 16, line, 16);
-        }
-    }
-    else
-    {
-        if (lastOk != 0)
-        {
-            OLED_String(48, 0, "--C    ", 16);
-            OLED_String(48, 16, "--%    ", 16);
-        }
-    }
-
-    if (lastAQ != mqPolluted)
-    {
-        OLED_String(48, 32, mqPolluted ? "BAD   " : "GOOD  ", 16);
-    }
-
-    lastTemp = temp;
-    lastHumi = humi;
-    lastOk = ok;
-    lastAQ = mqPolluted;
-}
-
+/**
+  * @brief  错误处理函数
+  * @param  无
+  * @retval 无
+  */
 void Error_Handler(void)
 {
     __disable_irq();
@@ -323,15 +380,13 @@ void Error_Handler(void)
     }
 }
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    if (GPIO_Pin == KEY0_GPIO_PIN)
-    {
-        g_key0_irq_event = 1;
-    }
-}
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
+/**
+  * @brief  assert失败回调函数
+  * @param  file: 文件名
+  * @param  line: 行号
+  * @retval 无
+  */
 void assert_failed(uint8_t *file, uint32_t line)
 {
     (void)file;
