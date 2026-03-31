@@ -41,7 +41,7 @@ add_executable(${CMAKE_PROJECT_NAME}
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
-
+            
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
@@ -51,6 +51,11 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
         Bsp/UART/bsp_UART.c
+        Bsp/OLED_0.96_4P/bsp_OLED.c
+        Bsp/DHT11/dht11.c
+        Bsp/W25Q128/bsp_W25Q128.c
+        
+
 
 
 )
@@ -59,6 +64,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
         Bsp/UART
+        Bsp/DHT11
+        Bsp/OLED_0.96_4P
+        Bsp/W25Q128
+
 )
 
 # Add project symbols (macros)
