@@ -461,6 +461,26 @@
               </FileOption>
             </File>
             <File>
+              <FileName>app_led.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/app_led.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_pir.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/app_pir.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_servo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/app_servo.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_esp8266.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Core/Src/app_esp8266.c</FilePath>
+            </File>
+            <File>
               <FileName>stm32f4xx_it.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32f4xx_it.c</FilePath>

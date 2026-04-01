@@ -4,10 +4,10 @@
 #include "main.h"
 #include <stdint.h>
 
-/* 双舵机PWM输出资源：TIM2_CH3(PA2), TIM2_CH4(PA3) */
-#define APP_SERVO_TIMER      TIM2
-#define APP_SERVO_CH_LEFT    TIM_CHANNEL_3
-#define APP_SERVO_CH_RIGHT   TIM_CHANNEL_4
+/* 双舵机PWM输出资源：TIM3_CH1(PA6), TIM3_CH2(PA7) */
+#define APP_SERVO_TIMER      TIM3
+#define APP_SERVO_CH_LEFT    TIM_CHANNEL_1
+#define APP_SERVO_CH_RIGHT   TIM_CHANNEL_2
 
 /* 柜门角度限制 */
 #define APP_SERVO_DOOR_ANGLE_CLOSE 0U

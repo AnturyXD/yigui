@@ -12,6 +12,7 @@
 #include "app_led.h"
 #include "app_pir.h"
 #include "app_servo.h"
+#include "app_esp8266.h"
 
 /******************************************************************************
  * 文件名称: main.c
@@ -73,6 +74,22 @@ static void APP_TaskReportUart(void);
   */
 static void APP_TaskUpdateOLED(void);
 
+/**
+  * @brief  ESP8266命令处理任务
+  * @param  无
+  * @retval 无
+  * @note   处理网络下发的开关门与状态查询命令
+  */
+static void APP_TaskProcessEspCommand(void);
+
+/**
+  * @brief  ESP8266上报任务
+  * @param  无
+  * @retval 无
+  * @note   按周期将传感器/门状态上报到TCP客户端
+  */
+static void APP_TaskUploadEspStatus(void);
+
 /* 全局状态标志：按规范使用volatile */
 static volatile uint8_t g_door_open_state = 0U;   /* 柜门状态：0关门，1开门 */
 static volatile uint8_t g_pir_detected = 0U;      /* 人体红外状态：1检测到人体 */
@@ -83,6 +100,9 @@ static volatile uint8_t g_humi_value = 0U;        /* 湿度值 */
 
 int main(void)
 {
+    uint32_t last_sensor_tick = 0U;   /* 传感器采样节拍 */
+    uint32_t last_heart_tick = 0U;    /* 心跳灯闪烁节拍 */
+
     HAL_Init();
     SystemClock_Config();
 
@@ -95,25 +115,39 @@ int main(void)
 
     while (1)
     {
-        /* 任务1：按键事件处理 */
+        /* 任务1：按键事件处理（本地按键） */
         APP_TaskProcessKeyEvent();
 
-        /* 任务2：传感器采样 */
-        APP_TaskSampleSensors();
+        /* 任务2：处理 ESP8266 串口接收（网络命令、连接状态） */
+        APP_ESP8266_TaskProcessRx();
 
-        /* 任务3：执行器更新 */
+        /* 任务3：执行 ESP8266 下发命令 */
+        APP_TaskProcessEspCommand();
+
+        /* 任务4：执行器更新 */
         APP_TaskUpdateActuator();
 
-        /* 任务4：串口输出 */
-        APP_TaskReportUart();
+        /* 任务5：按周期采样并刷新本地显示 */
+        if ((HAL_GetTick() - last_sensor_tick) >= 2000U)
+        {
+            last_sensor_tick = HAL_GetTick();
+            APP_TaskSampleSensors();
+            APP_TaskReportUart();
+            APP_TaskUpdateOLED();
+        }
 
-        /* 任务5：OLED显示 */
-        APP_TaskUpdateOLED();
+        /* 任务6：按周期上报数据到 ESP8266 TCP 客户端 */
+        APP_TaskUploadEspStatus();
 
-        /* 任务6：系统心跳灯翻转 */
-        APP_LED_ToggleHeartbeat();
+        /* 任务7：系统心跳灯翻转 */
+        if ((HAL_GetTick() - last_heart_tick) >= 500U)
+        {
+            last_heart_tick = HAL_GetTick();
+            APP_LED_ToggleHeartbeat();
+        }
 
-        HAL_Delay(1000);
+        /* 主循环快轮询，保持网络命令响应速度 */
+        HAL_Delay(10);
     }
 }
 
@@ -121,7 +155,7 @@ int main(void)
   * @brief  应用层初始化函数
   * @param  无
   * @retval 无
-  * @note   完成串口、OLED、按键、红外、舵机、DHT11初始化
+  * @note   完成串口、OLED、按键、红外、舵机、DHT11、ESP8266初始化
   */
 static void APP_Init(void)
 {
@@ -157,6 +191,16 @@ static void APP_Init(void)
         g_dht_online = 0U;
         printf("DHT11 init fail\r\n");
     }
+
+    /* ESP8266 驱动初始化（UART2 + TCP多连接Server） */
+    if (APP_ESP8266_Init() == 1U)
+    {
+        printf("ESP8266 init ok\r\n");
+    }
+    else
+    {
+        printf("ESP8266 init fail\r\n");
+    }
 }
 
 /**
@@ -181,6 +225,59 @@ static void APP_TaskProcessKeyEvent(void)
 
     /* 串口打印门状态 */
     printf("DOOR=%s\r\n", g_door_open_state ? "OPEN" : "CLOSE");
+}
+
+/**
+  * @brief  ESP8266命令处理任务
+  * @param  无
+  * @retval 无
+  * @note   网络命令只在主循环执行硬件动作，不在中断中执行
+  */
+static void APP_TaskProcessEspCommand(void)
+{
+    APP_ESP8266_CmdTypeDef cmd_type;
+    uint8_t cmd_link_id;
+
+    if (APP_ESP8266_GetPendingCommand(&cmd_type, &cmd_link_id) == 0U)
+    {
+        return;
+    }
+
+    if (cmd_type == APP_ESP8266_CMD_DOOR_OPEN)
+    {
+        g_door_open_state = 1U;
+        APP_SERVO_SetDoorState(g_door_open_state);
+        printf("ESP CMD(link %u): DOOR OPEN\r\n", cmd_link_id);
+    }
+    else if (cmd_type == APP_ESP8266_CMD_DOOR_CLOSE)
+    {
+        g_door_open_state = 0U;
+        APP_SERVO_SetDoorState(g_door_open_state);
+        printf("ESP CMD(link %u): DOOR CLOSE\r\n", cmd_link_id);
+    }
+    else if (cmd_type == APP_ESP8266_CMD_DOOR_TOGGLE)
+    {
+        g_door_open_state = (uint8_t)!g_door_open_state;
+        APP_SERVO_SetDoorState(g_door_open_state);
+        printf("ESP CMD(link %u): DOOR TOGGLE -> %s\r\n",
+               cmd_link_id,
+               g_door_open_state ? "OPEN" : "CLOSE");
+    }
+    else if (cmd_type == APP_ESP8266_CMD_STATUS_QUERY)
+    {
+        /* 收到状态查询命令后，立刻回发当前状态给对应连接 */
+        (void)APP_ESP8266_SendStatusNow(cmd_link_id,
+                                        g_dht_ok,
+                                        g_temp_value,
+                                        g_humi_value,
+                                        g_pir_detected,
+                                        g_door_open_state);
+        printf("ESP CMD(link %u): STATUS QUERY\r\n", cmd_link_id);
+    }
+    else
+    {
+        /* 无效命令类型，忽略 */
+    }
 }
 
 /**
@@ -314,6 +411,21 @@ static void APP_TaskUpdateOLED(void)
     last_humi = g_humi_value;
     last_dht_ok = g_dht_ok;
     last_pir = g_pir_detected;
+}
+
+/**
+  * @brief  ESP8266上报任务
+  * @param  无
+  * @retval 无
+  * @note   上报周期在模块内部控制，本函数仅调用接口
+  */
+static void APP_TaskUploadEspStatus(void)
+{
+    APP_ESP8266_TaskUploadStatus(g_dht_ok,
+                                 g_temp_value,
+                                 g_humi_value,
+                                 g_pir_detected,
+                                 g_door_open_state);
 }
 
 /**
