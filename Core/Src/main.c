@@ -177,6 +177,14 @@ static void APP_Init(void)
 
     /* 舵机驱动初始化并默认关门 */
     APP_SERVO_Init();
+    if (APP_SERVO_IsReady() == 1U)
+    {
+        printf("SERVO init ok\r\n");
+    }
+    else
+    {
+        printf("SERVO init fail\r\n");
+    }
     APP_SERVO_SetDoorState(0U);
     g_door_open_state = 0U;
 

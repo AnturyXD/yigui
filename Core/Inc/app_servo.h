@@ -29,4 +29,11 @@ void APP_SERVO_Init(void);
   */
 void APP_SERVO_SetDoorState(uint8_t open_state);
 
+/**
+  * @brief  查询舵机PWM是否已就绪
+  * @param  无
+  * @retval 1-就绪, 0-未就绪
+  */
+uint8_t APP_SERVO_IsReady(void);
+
 #endif

@@ -849,11 +849,9 @@ interwork --depend=stm32f407\startup_stm32f407xx.d -ostm32f407\startup_stm32f40
 ARM Macro Assembler    Page 14 
 
 
-7xx.o -I.\RTE\_STM32F407 -ID:\data\exe\keil5\ARM\CMSIS\5.9.0\CMSIS\Core\Include
- -ID:\data\exe\keil5\Keil\STM32F4xx_DFP\2.17.1\Drivers\CMSIS\Device\ST\STM32F4x
-x\Include --predefine="__UVISION_VERSION SETA 539" --predefine="_RTE_ SETA 1" -
--predefine="STM32F407xx SETA 1" --predefine="_RTE_ SETA 1" --list=startup_stm32
-f407xx.lst startup_stm32f407xx.s
+7xx.o -I.\RTE\_STM32F407 -ID:\data\keilMDK\Packs\ARM\CMSIS\6.3.0\CMSIS\Core\Inc
+lude --predefine="__UVISION_VERSION SETA 543" --predefine="STM32F407xx SETA 1" 
+--predefine="_RTE_ SETA 1" --list=startup_stm32f407xx.lst startup_stm32f407xx.s
 
 
 

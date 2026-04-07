@@ -16,8 +16,8 @@
 - `PA0`：按键输入（EXTI中断）
 - `PA1`：PIR 输入
 - `PA5`：DHT11 数据线
-- `PA2`：USART2_TX（连接 ESP8266 RXD）
-- `PA3`：USART2_RX（连接 ESP8266 TXD）
+- `PA2`：USART2_TX（连接 ESP8266 RXD，用于发送 AT 指令、状态上报、ACK/ERR）
+- `PA3`：USART2_RX（连接 ESP8266 TXD，用于接收 `+IPD` 下行命令与连接事件）
 - `PA6`：舵机1 PWM（TIM3_CH1）
 - `PA7`：舵机2 PWM（TIM3_CH2）
 - `PB8`：OLED SCL
@@ -48,8 +48,3 @@
   - `DOOR=TOGGLE`
   - `GET=STATUS`
 
-## 设计约束
-
-- 中断函数只置位标志，不做复杂处理
-- 主循环只调度任务，不堆叠复杂硬件操作
-- 所有硬件操作封装为独立函数，便于维护和移植

@@ -10,13 +10,13 @@
       <TargetName>STM32F407</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>5060528::V5.06 update 5 (build 528)::.\ARMCC</pCCUsed>
+      <pCCUsed>5060750::V5.06 update 6 (build 750)::.\ARMCC</pCCUsed>
       <uAC6>0</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32F407VETx</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <PackID>Keil.STM32F4xx_DFP.2.17.1</PackID>
+          <PackID>Keil.STM32F4xx_DFP.3.1.1</PackID>
           <PackURL>https://www.keil.com/pack/</PackURL>
           <Cpu>IRAM(0x20000000-0x2001BFFF) IRAM2(0x2001C000-0x2001FFFF) IROM(0x8000000-0x807FFFF) CLOCK(25000000) FPU2 CPUTYPE("Cortex-M4") TZ</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F407xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Bsp/UART;../Bsp/OLED_0.96_4P;../Bsp/W25Q128;..\Bsp\DHT11</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../Bsp/UART;../Bsp/OLED_0.96_4P;../Bsp/W25Q128;..\Bsp\DHT11;..\Bsp\KEY</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -489,11 +489,6 @@
               <FileName>stm32f4xx_hal_msp.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32f4xx_hal_msp.c</FilePath>
-            </File>
-            <File>
-              <FileName>readme.txt</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\readme.txt</FilePath>
             </File>
           </Files>
         </Group>
@@ -665,6 +660,11 @@
               <FileName>dht11.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Bsp\DHT11\dht11.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_Key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Bsp\KEY\bsp_Key.c</FilePath>
             </File>
           </Files>
         </Group>

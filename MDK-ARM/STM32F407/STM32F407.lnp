@@ -3,6 +3,10 @@
 "stm32f407\main.o"
 "stm32f407\gpio.o"
 "stm32f407\usart.o"
+"stm32f407\app_led.o"
+"stm32f407\app_pir.o"
+"stm32f407\app_servo.o"
+"stm32f407\app_esp8266.o"
 "stm32f407\stm32f4xx_it.o"
 "stm32f407\stm32f4xx_hal_msp.o"
 "stm32f407\stm32f4xx_hal_tim.o"
@@ -26,6 +30,7 @@
 "stm32f407\bsp_oled.o"
 "stm32f407\bsp_w25q128.o"
 "stm32f407\dht11.o"
+"stm32f407\bsp_key.o"
 --strict --scatter "STM32F407\STM32F407.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
