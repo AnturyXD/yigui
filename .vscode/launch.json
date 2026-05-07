@@ -1,42 +1,26 @@
 {
   "version": "0.2.0",
   "configurations": [
-    
     {
-      "name": "STM32F407 (CMSIS-DAP, OpenOCD, Launch)",
+      "name": "STM32F407 CMSIS-DAP",
       "type": "cortex-debug",
       "request": "launch",
-      "cwd": "${workspaceFolder}",
       "servertype": "openocd",
       "serverpath": "D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/bin/openocd.exe",
       "searchDir": [
         "D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/share/openocd/scripts"
       ],
-      "interface": "swd",
-      "device": "STM32F407VE",
       "executable": "${command:cmake.launchTargetPath}",
-      "runToEntryPoint": "main",
       "preLaunchTask": "Build Firmware",
-      "configFiles": [
-        "interface/cmsis-dap.cfg",
-        "target/stm32f4x.cfg"
-      ]
-    },
-    {
-      "name": "STM32F407 (CMSIS-DAP, OpenOCD, Attach)",
-      "type": "cortex-debug",
-      "request": "attach",
-      "cwd": "${workspaceFolder}",
-      "servertype": "openocd",
-      "serverpath": "D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/bin/openocd.exe",
-      "searchDir": [
-        "D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/share/openocd/scripts"
+      "runToEntryPoint": "main",
+      "openOCDLaunchCommands": [
+        "transport select swd",
+        "adapter speed 100",
+        "init",
+        "reset halt"
       ],
-      "interface": "swd",
-      "device": "STM32F407VE",
-      "executable": "${command:cmake.launchTargetPath}",
       "configFiles": [
-        "interface/cmsis-dap.cfg",
+        "openocd/interface-cmsis-dap-hid.cfg",
         "target/stm32f4x.cfg"
       ]
     }

@@ -35,7 +35,7 @@
 - `Bsp/OLED_0.96_4P`：OLED 驱动
 - `Bsp/UART`：串口重定向与收发封装
 
-## ESP8266 网络接口
+## ESP8266 网络接口(192.168.4.1:333)
 
 - 工作模式：`AT+CWMODE=3`（softAP + station）
 - 多连接：`AT+CIPMUX=1`

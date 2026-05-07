@@ -90,6 +90,20 @@ static void APP_TaskProcessEspCommand(void);
   */
 static void APP_TaskUploadEspStatus(void);
 
+/**
+  * @brief  从内部Flash读取掉电保存的门状态
+  * @param  out_state: 输出状态(0关门/1开门)
+  * @retval 1-读取有效, 0-无有效记录
+  */
+static uint8_t APP_DoorState_Load(uint8_t *out_state);
+
+/**
+  * @brief  保存门状态到内部Flash
+  * @param  state: 门状态(0关门/1开门)
+  * @retval 1-保存成功, 0-保存失败
+  */
+static uint8_t APP_DoorState_Save(uint8_t state);
+
 /* 全局状态标志：按规范使用volatile */
 static volatile uint8_t g_door_open_state = 0U;   /* 柜门状态：0关门，1开门 */
 static volatile uint8_t g_pir_detected = 0U;      /* 人体红外状态：1检测到人体 */
@@ -97,6 +111,11 @@ static volatile uint8_t g_dht_online = 0U;        /* DHT11在线标志：1初始
 static volatile uint8_t g_dht_ok = 0U;            /* DHT11本次读取状态：1成功 */
 static volatile uint8_t g_temp_value = 0U;        /* 温度值 */
 static volatile uint8_t g_humi_value = 0U;        /* 湿度值 */
+
+/* 掉电保存参数（使用STM32F407 512KB Flash最后一个扇区：Sector7） */
+#define APP_DOOR_STATE_FLASH_ADDR    0x08060000U
+#define APP_DOOR_STATE_FLASH_SECTOR  FLASH_SECTOR_7
+#define APP_DOOR_STATE_MAGIC         0x44524F31U /* "DRO1" */
 
 int main(void)
 {
@@ -159,8 +178,12 @@ int main(void)
   */
 static void APP_Init(void)
 {
+    uint8_t restored_state;
+
     /* 串口驱动初始化：115200波特率 */
     UART1_Init(115200);
+    UART3_Init(115200);
+    printf("UART3 init ok (PB10/PB11, 115200)\r\n");
 
     /* OLED驱动初始化 */
     OLED_Init();
@@ -175,7 +198,7 @@ static void APP_Init(void)
     /* 人体红外驱动初始化 */
     APP_PIR_Init();
 
-    /* 舵机驱动初始化并默认关门 */
+    /* 舵机驱动初始化：上电不立即驱动舵机，避免异动 */
     APP_SERVO_Init();
     if (APP_SERVO_IsReady() == 1U)
     {
@@ -185,8 +208,17 @@ static void APP_Init(void)
     {
         printf("SERVO init fail\r\n");
     }
-    APP_SERVO_SetDoorState(0U);
-    g_door_open_state = 0U;
+    /* 读取掉电前状态，仅恢复状态变量，不在上电时主动驱动舵机 */
+    if (APP_DoorState_Load(&restored_state) == 1U)
+    {
+        g_door_open_state = restored_state;
+        printf("DOOR state restored: %s\r\n", g_door_open_state ? "OPEN" : "CLOSE");
+    }
+    else
+    {
+        g_door_open_state = 0U;
+        printf("DOOR state default: CLOSE\r\n");
+    }
 
     /* DHT11驱动初始化 */
     if (DHT11_Init() == 0U)
@@ -230,6 +262,10 @@ static void APP_TaskProcessKeyEvent(void)
 
     /* 更新舵机门状态 */
     APP_SERVO_SetDoorState(g_door_open_state);
+    if (APP_DoorState_Save(g_door_open_state) == 0U)
+    {
+        printf("DOOR state save fail\r\n");
+    }
 
     /* 串口打印门状态 */
     printf("DOOR=%s\r\n", g_door_open_state ? "OPEN" : "CLOSE");
@@ -253,20 +289,38 @@ static void APP_TaskProcessEspCommand(void)
 
     if (cmd_type == APP_ESP8266_CMD_DOOR_OPEN)
     {
-        g_door_open_state = 1U;
-        APP_SERVO_SetDoorState(g_door_open_state);
+        if (g_door_open_state != 1U)
+        {
+            g_door_open_state = 1U;
+            APP_SERVO_SetDoorState(g_door_open_state);
+            if (APP_DoorState_Save(g_door_open_state) == 0U)
+            {
+                printf("DOOR state save fail\r\n");
+            }
+        }
         printf("ESP CMD(link %u): DOOR OPEN\r\n", cmd_link_id);
     }
     else if (cmd_type == APP_ESP8266_CMD_DOOR_CLOSE)
     {
-        g_door_open_state = 0U;
-        APP_SERVO_SetDoorState(g_door_open_state);
+        if (g_door_open_state != 0U)
+        {
+            g_door_open_state = 0U;
+            APP_SERVO_SetDoorState(g_door_open_state);
+            if (APP_DoorState_Save(g_door_open_state) == 0U)
+            {
+                printf("DOOR state save fail\r\n");
+            }
+        }
         printf("ESP CMD(link %u): DOOR CLOSE\r\n", cmd_link_id);
     }
     else if (cmd_type == APP_ESP8266_CMD_DOOR_TOGGLE)
     {
         g_door_open_state = (uint8_t)!g_door_open_state;
         APP_SERVO_SetDoorState(g_door_open_state);
+        if (APP_DoorState_Save(g_door_open_state) == 0U)
+        {
+            printf("DOOR state save fail\r\n");
+        }
         printf("ESP CMD(link %u): DOOR TOGGLE -> %s\r\n",
                cmd_link_id,
                g_door_open_state ? "OPEN" : "CLOSE");
@@ -434,6 +488,82 @@ static void APP_TaskUploadEspStatus(void)
                                  g_humi_value,
                                  g_pir_detected,
                                  g_door_open_state);
+}
+
+/**
+  * @brief  从内部Flash读取掉电保存的门状态
+  * @param  out_state: 输出状态(0关门/1开门)
+  * @retval 1-读取有效, 0-无有效记录
+  */
+static uint8_t APP_DoorState_Load(uint8_t *out_state)
+{
+    const uint32_t *nv_ptr = (const uint32_t *)APP_DOOR_STATE_FLASH_ADDR;
+    uint32_t magic;
+    uint32_t state;
+
+    if (out_state == NULL)
+    {
+        return 0U;
+    }
+
+    magic = nv_ptr[0];
+    state = nv_ptr[1];
+
+    if ((magic != APP_DOOR_STATE_MAGIC) || (state > 1U))
+    {
+        return 0U;
+    }
+
+    *out_state = (uint8_t)state;
+    return 1U;
+}
+
+/**
+  * @brief  保存门状态到内部Flash
+  * @param  state: 门状态(0关门/1开门)
+  * @retval 1-保存成功, 0-保存失败
+  * @note   每次写入会擦除Sector7，请避免高频写入
+  */
+static uint8_t APP_DoorState_Save(uint8_t state)
+{
+    HAL_StatusTypeDef hal_status;
+    FLASH_EraseInitTypeDef erase_config = {0};
+    uint32_t sector_error = 0U;
+
+    if (state > 1U)
+    {
+        return 0U;
+    }
+
+    HAL_FLASH_Unlock();
+
+    erase_config.TypeErase = FLASH_TYPEERASE_SECTORS;
+    erase_config.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+    erase_config.Sector = APP_DOOR_STATE_FLASH_SECTOR;
+    erase_config.NbSectors = 1U;
+
+    hal_status = HAL_FLASHEx_Erase(&erase_config, &sector_error);
+    if (hal_status != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        return 0U;
+    }
+
+    hal_status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,
+                                   APP_DOOR_STATE_FLASH_ADDR,
+                                   APP_DOOR_STATE_MAGIC);
+    if (hal_status != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        return 0U;
+    }
+
+    hal_status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,
+                                   APP_DOOR_STATE_FLASH_ADDR + 4U,
+                                   (uint32_t)state);
+    HAL_FLASH_Lock();
+
+    return (hal_status == HAL_OK) ? 1U : 0U;
 }
 
 /**

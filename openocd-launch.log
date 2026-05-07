@@ -1,0 +1,191 @@
+Debug: 6 4 log.c:236 handle_log_output_command(): set log_output to "D:/Workspace/yigui/yigui/openocd-launch.log"
+Debug: 7 4 options.c:233 add_default_dirs(): bindir=/usr/bin
+Debug: 8 4 options.c:234 add_default_dirs(): pkgdatadir=/usr/share/openocd
+Debug: 9 4 options.c:235 add_default_dirs(): exepath=D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/bin
+Debug: 10 4 options.c:236 add_default_dirs(): bin2data=../share/openocd
+Debug: 11 4 configuration.c:33 add_script_search_dir(): adding C:/Users/Antury/AppData/Roaming/OpenOCD
+Debug: 12 4 configuration.c:33 add_script_search_dir(): adding D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/bin/../share/openocd/site
+Debug: 13 4 configuration.c:33 add_script_search_dir(): adding D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/bin/../share/openocd/scripts
+Debug: 14 18 command.c:155 script_debug(): command - gdb_port 50000
+Debug: 15 18 command.c:155 script_debug(): command - tcl_port 50001
+Debug: 16 18 command.c:155 script_debug(): command - telnet_port 50002
+Debug: 17 18 command.c:155 script_debug(): command - ocd_find c:/Users/Antury/.vscode/extensions/marus25.cortex-debug-1.12.1/support/openocd-helpers.tcl
+Debug: 18 18 configuration.c:88 find_file(): found c:/Users/Antury/.vscode/extensions/marus25.cortex-debug-1.12.1/support/openocd-helpers.tcl
+User : 19 19 options.c:52 configuration_output_handler(): CDLiveWatchSetupUser : 20 19 options.c:52 configuration_output_handler(): 
+Debug: 21 19 command.c:155 script_debug(): command - ocd_find interface/cmsis-dap.cfg
+Debug: 22 19 configuration.c:88 find_file(): found D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/share/openocd/scripts/interface/cmsis-dap.cfg
+Debug: 23 19 command.c:155 script_debug(): command - adapter driver cmsis-dap
+Debug: 24 19 command.c:155 script_debug(): command - ocd_find target/stm32f4x.cfg
+Debug: 25 19 configuration.c:88 find_file(): found D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/share/openocd/scripts/target/stm32f4x.cfg
+Debug: 26 19 command.c:155 script_debug(): command - ocd_find target/swj-dp.tcl
+Debug: 27 19 configuration.c:88 find_file(): found D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/share/openocd/scripts/target/swj-dp.tcl
+Debug: 28 19 command.c:155 script_debug(): command - transport select
+Info : 29 19 transport.c:266 jim_transport_select(): auto-selecting first available session transport "swd". To override use 'transport select <transport>'.
+Debug: 30 19 command.c:155 script_debug(): command - ocd_find mem_helper.tcl
+Debug: 31 19 configuration.c:88 find_file(): found D:/Workspace/DevEnv/openocd-v0.12.0-i686-w64-mingw32/share/openocd/scripts/mem_helper.tcl
+Debug: 32 19 command.c:155 script_debug(): command - add_usage_text mrw address
+Debug: 33 19 command.c:155 script_debug(): command - add_help_text mrw Returns value of word in memory.
+Debug: 34 19 command.c:155 script_debug(): command - add_usage_text mrh address
+Debug: 35 19 command.c:155 script_debug(): command - add_help_text mrh Returns value of halfword in memory.
+Debug: 36 19 command.c:155 script_debug(): command - add_usage_text mrb address
+Debug: 37 19 command.c:155 script_debug(): command - add_help_text mrb Returns value of byte in memory.
+Debug: 38 19 command.c:155 script_debug(): command - add_usage_text mmw address setbits clearbits
+Debug: 39 19 command.c:155 script_debug(): command - add_help_text mmw Modify word in memory. new_val = (old_val & ~clearbits) | setbits;
+Debug: 40 20 command.c:155 script_debug(): command - transport select
+Debug: 41 20 command.c:155 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 42 20 command.c:155 script_debug(): command - transport select
+Debug: 43 20 command.c:155 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 44 20 command.c:155 script_debug(): command - transport select
+Debug: 45 20 command.c:155 script_debug(): command - expr  [ string first "swd" $_TRANSPORT ] != -1 
+Debug: 46 20 command.c:155 script_debug(): command - swd newdap stm32f4x cpu -irlen 4 -ircapture 0x1 -irmask 0xf -expected-id 0x2ba01477
+Debug: 47 20 tcl.c:558 jim_newtap_cmd(): Creating New Tap, Chip: stm32f4x, Tap: cpu, Dotted: stm32f4x.cpu, 8 params
+Debug: 48 20 core.c:1478 jtag_tap_init(): Created Tap: stm32f4x.cpu @ abs position 0, irlen 0, capture: 0x0 mask: 0x0
+Debug: 49 20 command.c:155 script_debug(): command - dap create stm32f4x.dap -chain-position stm32f4x.cpu
+Debug: 50 20 command.c:155 script_debug(): command - transport select
+Debug: 51 20 command.c:155 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 52 20 command.c:155 script_debug(): command - target create stm32f4x.cpu cortex_m -endian little -dap stm32f4x.dap
+Debug: 53 20 command.c:289 register_command(): command 'tpiu' is already registered
+Debug: 54 20 command.c:289 register_command(): command 'rtt' is already registered
+Debug: 55 20 command.c:155 script_debug(): command - stm32f4x.cpu configure -work-area-phys 0x20000000 -work-area-size 0x8000 -work-area-backup 0
+Debug: 56 20 target.c:2199 target_free_all_working_areas_restore(): freeing all working areas
+Debug: 57 20 target.c:2199 target_free_all_working_areas_restore(): freeing all working areas
+Debug: 58 20 target.c:2199 target_free_all_working_areas_restore(): freeing all working areas
+Debug: 59 20 command.c:155 script_debug(): command - flash bank stm32f4x.flash stm32f2x 0 0 0 0 stm32f4x.cpu
+Debug: 60 20 tcl.c:1305 handle_flash_bank_command(): 'stm32f2x' driver usage field missing
+Debug: 61 20 command.c:155 script_debug(): command - flash bank stm32f4x.otp stm32f2x 0x1fff7800 0 0 0 stm32f4x.cpu
+Debug: 62 20 command.c:289 register_command(): command 'stm32f2x' is already registered
+Debug: 63 20 command.c:289 register_command(): command 'stm32f2x lock' is already registered
+Debug: 64 20 command.c:289 register_command(): command 'stm32f2x unlock' is already registered
+Debug: 65 20 command.c:289 register_command(): command 'stm32f2x mass_erase' is already registered
+Debug: 66 20 command.c:289 register_command(): command 'stm32f2x options_read' is already registered
+Debug: 67 20 command.c:289 register_command(): command 'stm32f2x options_write' is already registered
+Debug: 68 20 command.c:289 register_command(): command 'stm32f2x optcr2_write' is already registered
+Debug: 69 20 command.c:289 register_command(): command 'stm32f2x otp' is already registered
+Debug: 70 20 tcl.c:1305 handle_flash_bank_command(): 'stm32f2x' driver usage field missing
+Debug: 71 20 command.c:155 script_debug(): command - adapter speed 2000
+Debug: 72 20 adapter.c:251 adapter_config_khz(): handle adapter khz
+Debug: 73 20 adapter.c:215 adapter_khz_to_speed(): convert khz to adapter specific speed value
+Debug: 74 20 adapter.c:215 adapter_khz_to_speed(): convert khz to adapter specific speed value
+Debug: 75 20 command.c:155 script_debug(): command - adapter srst delay 100
+Debug: 76 20 command.c:155 script_debug(): command - transport select
+Debug: 77 20 command.c:155 script_debug(): command - expr  [ string first "jtag" $_TRANSPORT ] != -1 
+Debug: 78 20 command.c:155 script_debug(): command - reset_config srst_nogate
+Debug: 79 20 command.c:155 script_debug(): command - transport select
+Debug: 80 20 command.c:155 script_debug(): command - expr  [ string first "hla" $_TRANSPORT ] != -1 
+Debug: 81 20 command.c:155 script_debug(): command - cortex_m reset_config sysresetreq
+Debug: 82 20 command.c:155 script_debug(): command - stm32f4x.cpu configure -event examine-end 
+	# Enable debug during low power modes (uses more power)
+	# DBGMCU_CR |= DBG_STANDBY | DBG_STOP | DBG_SLEEP
+	mmw 0xE0042004 0x00000007 0
+
+	# Stop watchdog counters during halt
+	# DBGMCU_APB1_FZ |= DBG_IWDG_STOP | DBG_WWDG_STOP
+	mmw 0xE0042008 0x00001800 0
+
+Debug: 83 20 command.c:155 script_debug(): command - tpiu create stm32f4x.tpiu -dap stm32f4x.dap -ap-num 0 -baseaddr 0xE0040000
+Debug: 84 20 command.c:155 script_debug(): command - stm32f4x.tpiu configure -event pre-enable _proc_pre_enable_stm32f4x.tpiu stm32f4x
+Debug: 85 20 command.c:155 script_debug(): command - stm32f4x.cpu configure -event reset-init 
+	# Configure PLL to boost clock to HSI x 4 (64 MHz)
+	mww 0x40023804 0x08012008   ;# RCC_PLLCFGR 16 Mhz /8 (M) * 128 (N) /4(P)
+	mww 0x40023C00 0x00000102   ;# FLASH_ACR = PRFTBE | 2(Latency)
+	mmw 0x40023800 0x01000000 0 ;# RCC_CR |= PLLON
+	sleep 10                    ;# Wait for PLL to lock
+	mmw 0x40023808 0x00001000 0 ;# RCC_CFGR |= RCC_CFGR_PPRE1_DIV2
+	mmw 0x40023808 0x00000002 0 ;# RCC_CFGR |= RCC_CFGR_SW_PLL
+
+	# Boost JTAG frequency
+	adapter speed 8000
+
+Debug: 86 20 command.c:155 script_debug(): command - stm32f4x.cpu configure -event reset-start 
+	# Reduce speed since CPU speed will slow down to 16MHz with the reset
+	adapter speed 2000
+
+Debug: 87 20 command.c:155 script_debug(): command - transport select swd
+Warn : 88 20 transport.c:276 jim_transport_select(): Transport "swd" was already selected
+User : 89 20 options.c:52 configuration_output_handler(): swdUser : 90 20 options.c:52 configuration_output_handler(): 
+Debug: 91 20 command.c:155 script_debug(): command - adapter speed 400
+Debug: 92 20 adapter.c:251 adapter_config_khz(): handle adapter khz
+Debug: 93 20 adapter.c:215 adapter_khz_to_speed(): convert khz to adapter specific speed value
+Debug: 94 20 adapter.c:215 adapter_khz_to_speed(): convert khz to adapter specific speed value
+User : 95 20 options.c:52 configuration_output_handler(): adapter speed: 400 kHz
+User : 96 20 options.c:52 configuration_output_handler(): 
+Info : 97 21 server.c:298 add_service(): Listening on port 50001 for tcl connections
+Info : 98 21 server.c:298 add_service(): Listening on port 50002 for telnet connections
+Debug: 99 21 command.c:155 script_debug(): command - init
+Debug: 100 21 command.c:155 script_debug(): command - target init
+Debug: 101 21 command.c:155 script_debug(): command - target names
+Debug: 102 21 command.c:155 script_debug(): command - stm32f4x.cpu cget -event gdb-flash-erase-start
+Debug: 103 21 command.c:155 script_debug(): command - stm32f4x.cpu configure -event gdb-flash-erase-start reset init
+Debug: 104 21 command.c:155 script_debug(): command - stm32f4x.cpu cget -event gdb-flash-write-end
+Debug: 105 21 command.c:155 script_debug(): command - stm32f4x.cpu configure -event gdb-flash-write-end reset halt
+Debug: 106 21 command.c:155 script_debug(): command - stm32f4x.cpu cget -event gdb-attach
+Debug: 107 21 command.c:155 script_debug(): command - stm32f4x.cpu configure -event gdb-attach halt 1000
+Debug: 108 21 target.c:1657 handle_target_init_command(): Initializing targets...
+Debug: 109 21 semihosting_common.c:109 semihosting_common_init():  
+Debug: 110 38 cmsis_dap_usb_bulk.c:151 cmsis_dap_usb_open(): found product string of 0x0416:0x5051 'STM32  CMSIS-DAP'
+Debug: 111 38 cmsis_dap_usb_bulk.c:171 cmsis_dap_usb_open(): enumerating interfaces of 0x0416:0x5051
+Debug: 112 38 cmsis_dap_usb_bulk.c:238 cmsis_dap_usb_open(): skipping interface 0, endpoint[0] is not bulk out
+Debug: 113 38 cmsis_dap_usb_bulk.c:231 cmsis_dap_usb_open(): skipping interface 1, has only 1 endpoints
+Debug: 114 38 cmsis_dap_usb_bulk.c:238 cmsis_dap_usb_open(): skipping interface 2, endpoint[0] is not bulk out
+Debug: 115 38 cmsis_dap_usb_bulk.c:106 cmsis_dap_usb_open(): could not open device 0x05e3:0x0608: Operation not supported or unimplemented on this platform
+Debug: 116 38 cmsis_dap_usb_bulk.c:106 cmsis_dap_usb_open(): could not open device 0x8086:0xa71e: Operation not supported or unimplemented on this platform
+Debug: 117 38 cmsis_dap_usb_bulk.c:106 cmsis_dap_usb_open(): could not open device 0x8086:0x51ed: Operation not supported or unimplemented on this platform
+Debug: 118 39 cmsis_dap_usb_bulk.c:171 cmsis_dap_usb_open(): enumerating interfaces of 0x248a:0x5b2f
+Debug: 119 40 cmsis_dap_usb_bulk.c:171 cmsis_dap_usb_open(): enumerating interfaces of 0x388d:0x0002
+Debug: 120 104 cmsis_dap_usb_bulk.c:171 cmsis_dap_usb_open(): enumerating interfaces of 0x2109:0x0103
+Debug: 121 109 cmsis_dap_usb_bulk.c:106 cmsis_dap_usb_open(): could not open device 0x30c9:0x00a6: Entity not found
+Debug: 122 109 cmsis_dap_usb_bulk.c:106 cmsis_dap_usb_open(): could not open device 0x05e3:0x0610: Operation not supported or unimplemented on this platform
+Debug: 123 177 cmsis_dap_usb_bulk.c:171 cmsis_dap_usb_open(): enumerating interfaces of 0x1a34:0xf517
+Debug: 124 177 cmsis_dap_usb_bulk.c:106 cmsis_dap_usb_open(): could not open device 0x05e3:0x0626: Operation not supported or unimplemented on this platform
+Debug: 125 177 cmsis_dap_usb_bulk.c:106 cmsis_dap_usb_open(): could not open device 0x8087:0x0033: Operation not supported or unimplemented on this platform
+Debug: 126 248 cmsis_dap_usb_bulk.c:171 cmsis_dap_usb_open(): enumerating interfaces of 0x048d:0xc982
+Info : 127 314 cmsis_dap.c:1027 cmsis_dap_get_caps_info(): CMSIS-DAP: SWD supported
+Info : 128 314 cmsis_dap.c:1027 cmsis_dap_get_caps_info(): CMSIS-DAP: JTAG supported
+Info : 129 314 cmsis_dap.c:1027 cmsis_dap_get_caps_info(): CMSIS-DAP: Atomic commands supported
+Info : 130 314 cmsis_dap.c:1027 cmsis_dap_get_caps_info(): CMSIS-DAP: Test domain timer supported
+Info : 131 315 cmsis_dap.c:1004 cmsis_dap_get_version_info(): CMSIS-DAP: FW Version = 1.6.0
+Info : 132 316 cmsis_dap.c:989 cmsis_dap_get_serial_info(): CMSIS-DAP: Serial# = 2024-09-01
+Info : 133 317 cmsis_dap.c:1156 cmsis_dap_swd_open(): CMSIS-DAP: Interface Initialised (SWD)
+Debug: 134 318 cmsis_dap.c:1238 cmsis_dap_init(): CMSIS-DAP: Packet Count = 16
+Debug: 135 318 cmsis_dap.c:1241 cmsis_dap_init(): Allocating FIFO for 3 pending packets
+Info : 136 319 cmsis_dap.c:1066 cmsis_dap_get_status(): SWCLK/TCK = 1 SWDIO/TMS = 1 TDI = 0 TDO = 0 nTRST = 0 nRESET = 1
+Info : 137 324 cmsis_dap.c:1292 cmsis_dap_init(): CMSIS-DAP: Interface ready
+Debug: 138 324 adapter.c:215 adapter_khz_to_speed(): convert khz to adapter specific speed value
+Debug: 139 324 adapter.c:219 adapter_khz_to_speed(): have adapter set up
+Debug: 140 324 adapter.c:215 adapter_khz_to_speed(): convert khz to adapter specific speed value
+Debug: 141 324 adapter.c:219 adapter_khz_to_speed(): have adapter set up
+Info : 142 324 adapter.c:179 adapter_init(): clock speed 400 kHz
+Debug: 143 324 openocd.c:134 handle_init_command(): Debug Adapter init complete
+Debug: 144 324 command.c:155 script_debug(): command - transport init
+Debug: 145 324 transport.c:219 handle_transport_init(): handle_transport_init
+Debug: 146 324 command.c:155 script_debug(): command - dap init
+Debug: 147 324 arm_dap.c:97 dap_init_all(): Initializing all DAPs ...
+Debug: 148 324 arm_dap.c:121 dap_init_all(): DAP stm32f4x.cpu configured by default to use ADIv5 protocol
+Debug: 149 328 cmsis_dap.c:1100 cmsis_dap_swd_switch_seq(): JTAG-to-SWD
+Info : 150 333 adi_v5_swd.c:370 swd_connect_single(): SWD DPIDR 0x2ba01477
+Debug: 151 335 arm_adi_v5.c:679 dap_dp_init(): stm32f4x.dap
+Debug: 152 335 arm_adi_v5.c:711 dap_dp_init(): DAP: wait CDBGPWRUPACK
+Debug: 153 335 arm_adi_v5.h:639 dap_dp_poll_register(): DAP: poll 4, mask 0x20000000, value 0x20000000
+Debug: 154 337 arm_adi_v5.c:719 dap_dp_init(): DAP: wait CSYSPWRUPACK
+Debug: 155 337 arm_adi_v5.h:639 dap_dp_poll_register(): DAP: poll 4, mask 0x80000000, value 0x80000000
+Debug: 156 339 cmsis_dap.c:808 cmsis_dap_swd_write_from_queue(): refusing to enable sticky overrun detection
+Debug: 157 341 openocd.c:151 handle_init_command(): Examining targets...
+Debug: 158 341 target.c:1845 target_call_event_callbacks(): target event 19 (examine-start) for core stm32f4x.cpu
+Debug: 159 342 arm_adi_v5.c:1095 dap_get_ap(): refcount AP#0x0 get 1
+Debug: 160 343 arm_adi_v5.c:1040 dap_find_get_ap(): Found MEM-AP AHB3 at AP index: 0 (IDR=0x24770011)
+Debug: 161 347 arm_adi_v5.c:826 mem_ap_init(): MEM_AP Packed Transfers: enabled
+Debug: 162 347 arm_adi_v5.c:837 mem_ap_init(): MEM_AP CFG: large data 0, long address 0, big-endian 0
+Debug: 163 350 target.c:2630 target_read_u32(): address: 0xe000ed00, value: 0x00020000
+Error: 164 350 cortex_m.c:2363 cortex_m_examine(): [stm32f4x.cpu] Cortex-M PARTNO 0x0 is unrecognized
+Debug: 165 350 target.c:1845 target_call_event_callbacks(): target event 20 (examine-fail) for core stm32f4x.cpu
+Warn : 166 350 target.c:802 target_examine(): target stm32f4x.cpu examination failed
+Debug: 167 350 openocd.c:153 handle_init_command(): target examination failed
+Debug: 168 350 command.c:155 script_debug(): command - flash init
+Debug: 169 350 tcl.c:1375 handle_flash_init_command(): Initializing flash devices...
+Debug: 170 350 command.c:155 script_debug(): command - nand init
+Debug: 171 350 tcl.c:487 handle_nand_init_command(): Initializing NAND devices...
+Debug: 172 350 command.c:155 script_debug(): command - pld init
+Debug: 173 350 pld.c:194 handle_pld_init_command(): Initializing PLDs...
+Debug: 174 350 command.c:155 script_debug(): command - tpiu init
+Info : 175 350 gdb_server.c:3791 gdb_target_start(): starting gdb server for stm32f4x.cpu on 50000
+Info : 176 350 server.c:298 add_service(): Listening on port 50000 for gdb connections
