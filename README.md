@@ -24,6 +24,9 @@
 - `PB9`：OLED SDA
 - `PA9`：USART1_TX
 - `PA10`：USART1_RX
+- `PB10`：USART3_TX（预留）
+- `PB11`：USART3_RX（预留）
+- `PB12`：继电器灯控输出（低电平触发，`0=开灯`，`1=关灯`）
 - `PC5`：板载红灯（低电平点亮）
 - `PB2`：板载蓝灯（心跳指示）
 
@@ -34,6 +37,7 @@
 - `Bsp/DHT11`：DHT11 驱动
 - `Bsp/OLED_0.96_4P`：OLED 驱动
 - `Bsp/UART`：串口重定向与收发封装
+- `docs/ESP8266_APP_API.md`：手机 App 接入接口文档（TCP 协议、命令、ACK/ERR、JSON）
 
 ## ESP8266 网络接口(192.168.4.1:333)
 
@@ -41,10 +45,24 @@
 - 多连接：`AT+CIPMUX=1`
 - Server：`AT+CIPSERVER=1,333`
 - 上报格式（JSON文本）：
-  - `{"temp":25,"humi":60,"pir":1,"door":0,"dht":1}`
+  - `{"temp":25,"humi":60,"pir":1,"door":0,"light":1,"dht":1}`
 - 下行指令（不区分大小写）：
   - `DOOR=OPEN`
   - `DOOR=CLOSE`
   - `DOOR=TOGGLE`
   - `GET=STATUS`
+- 灯带控制逻辑：
+  - 不支持下行命令控制开关
+  - `PIR=1` 自动开灯，`PIR=0` 自动关灯
 
+## HTML 上位机（Web）
+
+- 页面：`tools/web-console/index.html`
+- 桥接：`tools/web-console/ws_tcp_bridge.py`
+
+浏览器无法直接连接原始 TCP（`192.168.4.1:333`），需先运行本地 WebSocket 桥接：
+
+1. 安装依赖：`pip install websockets`
+2. 运行桥接：`python tools/web-console/ws_tcp_bridge.py`
+3. 用浏览器打开 `tools/web-console/index.html`
+4. 点击“连接”，即可收状态并下发命令（`DOOR=...`、`GET=STATUS`）

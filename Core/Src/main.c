@@ -12,6 +12,7 @@
 #include "app_led.h"
 #include "app_pir.h"
 #include "app_servo.h"
+#include "app_relay.h"
 #include "app_esp8266.h"
 
 /******************************************************************************
@@ -111,6 +112,7 @@ static volatile uint8_t g_dht_online = 0U;        /* DHT11在线标志：1初始
 static volatile uint8_t g_dht_ok = 0U;            /* DHT11本次读取状态：1成功 */
 static volatile uint8_t g_temp_value = 0U;        /* 温度值 */
 static volatile uint8_t g_humi_value = 0U;        /* 湿度值 */
+static volatile uint8_t g_light_on_state = 0U;    /* 灯状态：0关灯，1开灯 */
 
 /* 掉电保存参数（使用STM32F407 512KB Flash最后一个扇区：Sector7） */
 #define APP_DOOR_STATE_FLASH_ADDR    0x08060000U
@@ -197,6 +199,10 @@ static void APP_Init(void)
 
     /* 人体红外驱动初始化 */
     APP_PIR_Init();
+
+    /* 继电器驱动初始化：PB12低电平触发，默认关灯 */
+    APP_RELAY_Init();
+    g_light_on_state = APP_RELAY_GetLightState();
 
     /* 舵机驱动初始化：上电不立即驱动舵机，避免异动 */
     APP_SERVO_Init();
@@ -333,7 +339,8 @@ static void APP_TaskProcessEspCommand(void)
                                         g_temp_value,
                                         g_humi_value,
                                         g_pir_detected,
-                                        g_door_open_state);
+                                        g_door_open_state,
+                                        g_light_on_state);
         printf("ESP CMD(link %u): STATUS QUERY\r\n", cmd_link_id);
     }
     else
@@ -380,6 +387,8 @@ static void APP_TaskSampleSensors(void)
 static void APP_TaskUpdateActuator(void)
 {
     APP_LED_SetPIRIndicator(g_pir_detected);
+    APP_RELAY_SetLightState(g_pir_detected);
+    g_light_on_state = APP_RELAY_GetLightState();
 }
 
 /**
@@ -487,7 +496,8 @@ static void APP_TaskUploadEspStatus(void)
                                  g_temp_value,
                                  g_humi_value,
                                  g_pir_detected,
-                                 g_door_open_state);
+                                 g_door_open_state,
+                                 g_light_on_state);
 }
 
 /**
@@ -575,6 +585,7 @@ static uint8_t APP_DoorState_Save(uint8_t state)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
     Key_EXTI_Callback(GPIO_Pin);
+    APP_PIR_EXTI_Callback(GPIO_Pin);
 }
 
 /**

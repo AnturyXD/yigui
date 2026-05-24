@@ -42,6 +42,8 @@ void Error_Handler(void);
 
 #define LED_BLUE_Pin GPIO_PIN_2
 #define LED_BLUE_GPIO_Port GPIOB
+#define RELAY_LIGHT_Pin GPIO_PIN_12
+#define RELAY_LIGHT_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 /* 人体红外模块（PIR）输入引脚 */

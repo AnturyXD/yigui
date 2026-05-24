@@ -1,37 +1,37 @@
 ﻿#include "app_pir.h"
 
-/**
-  * @brief  人体红外驱动初始化函数
-  * @param  无
-  * @retval 无
-  * @note   配置PA1为普通输入
-  */
+/* PIR状态缓存：中断更新，主循环读取 */
+static volatile uint8_t g_pir_state = 0U;
+
 void APP_PIR_Init(void)
 {
     GPIO_InitTypeDef gpio_init_struct = {0};
 
-    /* 使能GPIOA时钟 */
     __HAL_RCC_GPIOA_CLK_ENABLE();
 
-    /* PA1：普通输入，不上拉不下拉 */
     gpio_init_struct.Pin = APP_PIR_GPIO_PIN;
-    gpio_init_struct.Mode = GPIO_MODE_INPUT;
+    gpio_init_struct.Mode = GPIO_MODE_IT_RISING_FALLING;
     gpio_init_struct.Pull = GPIO_NOPULL;
     gpio_init_struct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(APP_PIR_GPIO_PORT, &gpio_init_struct);
+
+    HAL_NVIC_SetPriority(EXTI1_IRQn, 1, 0);
+    HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+    g_pir_state = (HAL_GPIO_ReadPin(APP_PIR_GPIO_PORT, APP_PIR_GPIO_PIN) == GPIO_PIN_SET) ? 1U : 0U;
 }
 
-/**
-  * @brief  读取人体红外状态
-  * @param  无
-  * @retval 1-检测到人体, 0-未检测到人体
-  */
 uint8_t APP_PIR_ReadState(void)
 {
-    if (HAL_GPIO_ReadPin(APP_PIR_GPIO_PORT, APP_PIR_GPIO_PIN) == GPIO_PIN_SET)
+    return g_pir_state;
+}
+
+void APP_PIR_EXTI_Callback(uint16_t gpio_pin)
+{
+    if (gpio_pin != APP_PIR_GPIO_PIN)
     {
-        return 1U;
+        return;
     }
 
-    return 0U;
+    g_pir_state = (HAL_GPIO_ReadPin(APP_PIR_GPIO_PORT, APP_PIR_GPIO_PIN) == GPIO_PIN_SET) ? 1U : 0U;
 }

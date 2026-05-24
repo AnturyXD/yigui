@@ -1,4 +1,4 @@
-#include "app_esp8266.h"
+﻿#include "app_esp8266.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -8,97 +8,75 @@
 #include "bsp_UART.h"
 
 /******************************************************************************
- * 文件名称: app_esp8266.c
- * 功能说明: ESP8266 应用层接口实现
- *
- * 协议约定:
- * 1. 设备上报格式（文本JSON）：
+ * 鏂囦欢鍚嶇О: app_esp8266.c
+ * 鍔熻兘璇存槑: ESP8266 搴旂敤灞傛帴鍙ｅ疄鐜? *
+ * 鍗忚绾﹀畾:
+ * 1. 璁惧涓婃姤鏍煎紡锛堟枃鏈琂SON锛夛細
  *    {"temp":25,"humi":60,"pir":1,"door":0,"dht":1}\r\n
- * 2. 下行命令（不区分大小写）：
- *    DOOR=OPEN
+ * 2. 涓嬭鍛戒护锛堜笉鍖哄垎澶у皬鍐欙級锛? *    DOOR=OPEN
  *    DOOR=CLOSE
  *    DOOR=TOGGLE
  *    GET=STATUS
  ******************************************************************************/
 
-/* ESP8266 初始化完成标志：1-已完成初始化，0-未完成 */
+/* ESP8266 鍒濆鍖栧畬鎴愭爣蹇楋細1-宸插畬鎴愬垵濮嬪寲锛?-鏈畬鎴?*/
 static volatile uint8_t g_esp8266_ready = 0U;
 
-/* 待处理网络命令：在解析到 +IPD 指令后置位，主循环读取后清零 */
+/* 寰呭鐞嗙綉缁滃懡浠わ細鍦ㄨВ鏋愬埌 +IPD 鎸囦护鍚庣疆浣嶏紝涓诲惊鐜鍙栧悗娓呴浂 */
 static volatile APP_ESP8266_CmdTypeDef g_pending_cmd = APP_ESP8266_CMD_NONE;
 
-/* 待处理命令来源的连接号 */
+/* 寰呭鐞嗗懡浠ゆ潵婧愮殑杩炴帴鍙?*/
 static volatile uint8_t g_pending_cmd_link_id = 0U;
 
-/* 多连接在线状态表：数组下标即连接号（0~4） */
+/* 澶氳繛鎺ュ湪绾跨姸鎬佽〃锛氭暟缁勪笅鏍囧嵆杩炴帴鍙凤紙0~4锛?*/
 static volatile uint8_t g_link_online[APP_ESP8266_MAX_LINK_NUM] = {0U};
 
-/* 周期上报时间戳（单位：毫秒） */
+/* 鍛ㄦ湡涓婃姤鏃堕棿鎴筹紙鍗曚綅锛氭绉掞級 */
 static uint32_t g_last_upload_tick = 0U;
 
 /**
-  * @brief  等待串口返回指定应答字符串
-  * @param  ack_string: 期望应答字符串
-  * @param  timeout_ms: 超时时间（毫秒）
-  * @retval 1-等待成功，0-超时失败
+  * @brief  绛夊緟涓插彛杩斿洖鎸囧畾搴旂瓟瀛楃涓?  * @param  ack_string: 鏈熸湜搴旂瓟瀛楃涓?  * @param  timeout_ms: 瓒呮椂鏃堕棿锛堟绉掞級
+  * @retval 1-绛夊緟鎴愬姛锛?-瓒呮椂澶辫触
   */
 static uint8_t APP_ESP8266_WaitAck(const char *ack_string, uint16_t timeout_ms);
 
 /**
-  * @brief  发送一条 AT 指令并检查返回
-  * @param  at_cmd: AT 指令字符串（需带 \r\n）
-  * @param  ack_string: 期望返回关键字
-  * @param  timeout_ms: 超时时间（毫秒）
-  * @retval 1-成功，0-失败
+  * @brief  鍙戦€佷竴鏉?AT 鎸囦护骞舵鏌ヨ繑鍥?  * @param  at_cmd: AT 鎸囦护瀛楃涓诧紙闇€甯?\r\n锛?  * @param  ack_string: 鏈熸湜杩斿洖鍏抽敭瀛?  * @param  timeout_ms: 瓒呮椂鏃堕棿锛堟绉掞級
+  * @retval 1-鎴愬姛锛?-澶辫触
   */
 static uint8_t APP_ESP8266_SendATAndCheck(const char *at_cmd, const char *ack_string, uint16_t timeout_ms);
 
 /**
-  * @brief  解析连接建立/断开事件
-  * @param  rx_text: 接收到的一帧串口文本
-  * @retval 无
-  */
+  * @brief  瑙ｆ瀽杩炴帴寤虹珛/鏂紑浜嬩欢
+  * @param  rx_text: 鎺ユ敹鍒扮殑涓€甯т覆鍙ｆ枃鏈?  * @retval 鏃?  */
 static void APP_ESP8266_ParseLinkEvent(const char *rx_text);
 
 /**
-  * @brief  解析 +IPD 帧并提取命令
-  * @param  rx_text: 接收到的一帧串口文本
-  * @retval 无
-  */
+  * @brief  瑙ｆ瀽 +IPD 甯у苟鎻愬彇鍛戒护
+  * @param  rx_text: 鎺ユ敹鍒扮殑涓€甯т覆鍙ｆ枃鏈?  * @retval 鏃?  */
 static void APP_ESP8266_ParseIPDCommand(const char *rx_text);
 
 /**
-  * @brief  向指定连接发送文本数据
-  * @param  link_id: 目标连接号
-  * @param  text: 发送文本
-  * @retval 1-成功，0-失败
+  * @brief  鍚戞寚瀹氳繛鎺ュ彂閫佹枃鏈暟鎹?  * @param  link_id: 鐩爣杩炴帴鍙?  * @param  text: 鍙戦€佹枃鏈?  * @retval 1-鎴愬姛锛?-澶辫触
   */
 static uint8_t APP_ESP8266_SendTextToLink(uint8_t link_id, const char *text);
 
 /**
-  * @brief  组织状态JSON字符串
-  * @param  out_text: 输出字符串缓存
-  * @param  out_len: 缓存长度
-  * @param  dht_ok: DHT11 数据有效标志
-  * @param  temp: 温度值
-  * @param  humi: 湿度值
-  * @param  pir: 人体红外状态
-  * @param  door_open: 柜门状态
-  * @retval 无
-  */
+  * @brief  缁勭粐鐘舵€丣SON瀛楃涓?  * @param  out_text: 杈撳嚭瀛楃涓茬紦瀛?  * @param  out_len: 缂撳瓨闀垮害
+  * @param  dht_ok: DHT11 鏁版嵁鏈夋晥鏍囧織
+  * @param  temp: 娓╁害鍊?  * @param  humi: 婀垮害鍊?  * @param  pir: 浜轰綋绾㈠鐘舵€?  * @param  door_open: 鏌滈棬鐘舵€?  * @retval 鏃?  */
 static void APP_ESP8266_FormatStatus(char *out_text,
                                      uint16_t out_len,
                                      uint8_t dht_ok,
                                      uint8_t temp,
                                      uint8_t humi,
                                      uint8_t pir,
-                                     uint8_t door_open);
+                                     uint8_t door_open,
+                                     uint8_t light_on);
 
 /**
-  * @brief  将字符串转换为大写（便于不区分大小写匹配命令）
-  * @param  text: 待转换字符串
-  * @retval 无
-  */
+  * @brief  灏嗗瓧绗︿覆杞崲涓哄ぇ鍐欙紙渚夸簬涓嶅尯鍒嗗ぇ灏忓啓鍖归厤鍛戒护锛?  * @param  text: 寰呰浆鎹㈠瓧绗︿覆
+  * @retval 鏃?  */
 static void APP_ESP8266_ToUpper(char *text);
 
 uint8_t APP_ESP8266_Init(void)
@@ -106,16 +84,16 @@ uint8_t APP_ESP8266_Init(void)
     uint8_t retry_count;
     char at_cmd[32] = {0};
 
-    /* 先清零内部状态变量，确保重复初始化时状态干净 */
+    /* 鍏堟竻闆跺唴閮ㄧ姸鎬佸彉閲忥紝纭繚閲嶅鍒濆鍖栨椂鐘舵€佸共鍑€ */
     g_esp8266_ready = 0U;
     g_pending_cmd = APP_ESP8266_CMD_NONE;
     g_pending_cmd_link_id = 0U;
     memset((void *)g_link_online, 0, sizeof(g_link_online));
 
-    /* 初始化 UART2（PA2/PA3），与 ESP8266 串口通信 */
+    /* 鍒濆鍖?UART2锛圥A2/PA3锛夛紝涓?ESP8266 涓插彛閫氫俊 */
     UART2_Init(APP_ESP8266_UART_BAUDRATE);
 
-    /* 为兼容上电时间差，AT 命令先做最多3次重试 */
+    /* 涓哄吋瀹逛笂鐢垫椂闂村樊锛孉T 鍛戒护鍏堝仛鏈€澶?娆￠噸璇?*/
     for (retry_count = 0U; retry_count < 3U; retry_count++)
     {
         if (APP_ESP8266_SendATAndCheck("AT\r\n", "OK", 800U) == 1U)
@@ -131,27 +109,27 @@ uint8_t APP_ESP8266_Init(void)
         return 0U;
     }
 
-    /* 关闭 AT 回显，减少串口噪声，便于解析 */
+    /* 鍏抽棴 AT 鍥炴樉锛屽噺灏戜覆鍙ｅ櫔澹帮紝渚夸簬瑙ｆ瀽 */
     (void)APP_ESP8266_SendATAndCheck("ATE0\r\n", "OK", 500U);
 
-    /* 设置 Wi-Fi 模式：3 = softAP + station（与文档示例保持一致） */
+    /* 璁剧疆 Wi-Fi 妯″紡锛? = softAP + station锛堜笌鏂囨。绀轰緥淇濇寔涓€鑷达級 */
     if (APP_ESP8266_SendATAndCheck("AT+CWMODE=3\r\n", "OK", 1000U) == 0U)
     {
         printf("ESP8266 init fail: CWMODE\r\n");
         return 0U;
     }
 
-    /* 使能多连接（TCP Server 必须先开启多连接） */
+    /* 浣胯兘澶氳繛鎺ワ紙TCP Server 蹇呴』鍏堝紑鍚杩炴帴锛?*/
     if (APP_ESP8266_SendATAndCheck("AT+CIPMUX=1\r\n", "OK", 1000U) == 0U)
     {
         printf("ESP8266 init fail: CIPMUX\r\n");
         return 0U;
     }
 
-    /* 先尝试关闭历史 server（避免重启后重复开启导致 ERROR） */
+    /* 鍏堝皾璇曞叧闂巻鍙?server锛堥伩鍏嶉噸鍚悗閲嶅寮€鍚鑷?ERROR锛?*/
     (void)APP_ESP8266_SendATAndCheck("AT+CIPSERVER=0\r\n", "OK", 500U);
 
-    /* 开启 TCP Server（多连接） */
+    /* 寮€鍚?TCP Server锛堝杩炴帴锛?*/
     snprintf(at_cmd, sizeof(at_cmd), "AT+CIPSERVER=1,%u\r\n", APP_ESP8266_TCP_SERVER_PORT);
     if (APP_ESP8266_SendATAndCheck(at_cmd, "OK", 1500U) == 0U)
     {
@@ -169,19 +147,19 @@ void APP_ESP8266_TaskProcessRx(void)
 {
     const char *rx_text;
 
-    /* 未完成初始化时，不处理串口数据 */
+    /* 鏈畬鎴愬垵濮嬪寲鏃讹紝涓嶅鐞嗕覆鍙ｆ暟鎹?*/
     if (g_esp8266_ready == 0U)
     {
         return;
     }
 
-    /* 无新数据则直接返回 */
+    /* 鏃犳柊鏁版嵁鍒欑洿鎺ヨ繑鍥?*/
     if (UART2_GetRxNum() == 0U)
     {
         return;
     }
 
-    /* 获取一帧完整接收文本（由 UART2 空闲中断封包） */
+    /* 鑾峰彇涓€甯у畬鏁存帴鏀舵枃鏈紙鐢?UART2 绌洪棽涓柇灏佸寘锛?*/
     rx_text = (const char *)UART2_GetRxData();
     if (rx_text == NULL)
     {
@@ -189,13 +167,13 @@ void APP_ESP8266_TaskProcessRx(void)
         return;
     }
 
-    /* 先解析连接上下线事件 */
+    /* 鍏堣В鏋愯繛鎺ヤ笂涓嬬嚎浜嬩欢 */
     APP_ESP8266_ParseLinkEvent(rx_text);
 
-    /* 再解析 +IPD 下行命令帧 */
+    /* 鍐嶈В鏋?+IPD 涓嬭鍛戒护甯?*/
     APP_ESP8266_ParseIPDCommand(rx_text);
 
-    /* 清除接收标志，进入下一轮接收 */
+    /* 娓呴櫎鎺ユ敹鏍囧織锛岃繘鍏ヤ笅涓€杞帴鏀?*/
     UART2_ClearRx();
 }
 
@@ -203,19 +181,20 @@ void APP_ESP8266_TaskUploadStatus(uint8_t dht_ok,
                                   uint8_t temp,
                                   uint8_t humi,
                                   uint8_t pir,
-                                  uint8_t door_open)
+                                  uint8_t door_open,
+                                  uint8_t light_on)
 {
     uint32_t now_tick;
     uint8_t link_id;
     char status_text[96] = {0};
 
-    /* 模块未就绪，不执行上报 */
+    /* 妯″潡鏈氨缁紝涓嶆墽琛屼笂鎶?*/
     if (g_esp8266_ready == 0U)
     {
         return;
     }
 
-    /* 基于时间戳进行周期控制 */
+    /* 鍩轰簬鏃堕棿鎴宠繘琛屽懆鏈熸帶鍒?*/
     now_tick = HAL_GetTick();
     if ((now_tick - g_last_upload_tick) < APP_ESP8266_UPLOAD_PERIOD_MS)
     {
@@ -223,10 +202,10 @@ void APP_ESP8266_TaskUploadStatus(uint8_t dht_ok,
     }
     g_last_upload_tick = now_tick;
 
-    /* 先组织本次上报数据文本 */
-    APP_ESP8266_FormatStatus(status_text, sizeof(status_text), dht_ok, temp, humi, pir, door_open);
+    /* 鍏堢粍缁囨湰娆′笂鎶ユ暟鎹枃鏈?*/
+    APP_ESP8266_FormatStatus(status_text, sizeof(status_text), dht_ok, temp, humi, pir, door_open, light_on);
 
-    /* 广播给所有在线连接 */
+    /* 骞挎挱缁欐墍鏈夊湪绾胯繛鎺?*/
     for (link_id = 0U; link_id < APP_ESP8266_MAX_LINK_NUM; link_id++)
     {
         if (g_link_online[link_id] == 1U)
@@ -251,7 +230,7 @@ uint8_t APP_ESP8266_GetPendingCommand(APP_ESP8266_CmdTypeDef *cmd, uint8_t *link
     *cmd = g_pending_cmd;
     *link_id = g_pending_cmd_link_id;
 
-    /* 主循环读取后立即清空，避免重复执行 */
+    /* 涓诲惊鐜鍙栧悗绔嬪嵆娓呯┖锛岄伩鍏嶉噸澶嶆墽琛?*/
     g_pending_cmd = APP_ESP8266_CMD_NONE;
     g_pending_cmd_link_id = 0U;
 
@@ -263,11 +242,12 @@ uint8_t APP_ESP8266_SendStatusNow(uint8_t link_id,
                                   uint8_t temp,
                                   uint8_t humi,
                                   uint8_t pir,
-                                  uint8_t door_open)
+                                  uint8_t door_open,
+                                  uint8_t light_on)
 {
     char status_text[96] = {0};
 
-    APP_ESP8266_FormatStatus(status_text, sizeof(status_text), dht_ok, temp, humi, pir, door_open);
+    APP_ESP8266_FormatStatus(status_text, sizeof(status_text), dht_ok, temp, humi, pir, door_open, light_on);
     return APP_ESP8266_SendTextToLink(link_id, status_text);
 }
 
@@ -286,7 +266,7 @@ static uint8_t APP_ESP8266_WaitAck(const char *ack_string, uint16_t timeout_ms)
         {
             rx_text = (const char *)UART2_GetRxData();
 
-            /* 有些返回帧里会夹带 CONNECT/CLOSED，这里顺便维护连接状态 */
+            /* 鏈変簺杩斿洖甯ч噷浼氬す甯?CONNECT/CLOSED锛岃繖閲岄『渚跨淮鎶よ繛鎺ョ姸鎬?*/
             if (rx_text != NULL)
             {
                 APP_ESP8266_ParseLinkEvent(rx_text);
@@ -328,14 +308,14 @@ static void APP_ESP8266_ParseLinkEvent(const char *rx_text)
         return;
     }
 
-    /* 如果 Wi-Fi 断开，则本地连接表清零 */
+    /* 濡傛灉 Wi-Fi 鏂紑锛屽垯鏈湴杩炴帴琛ㄦ竻闆?*/
     if (strstr(rx_text, "WIFI DISCONNECT") != NULL)
     {
         memset((void *)g_link_online, 0, sizeof(g_link_online));
         return;
     }
 
-    /* 检查每个连接号的 CONNECT/CLOSED 文本 */
+    /* 妫€鏌ユ瘡涓繛鎺ュ彿鐨?CONNECT/CLOSED 鏂囨湰 */
     for (link_id = 0U; link_id < APP_ESP8266_MAX_LINK_NUM; link_id++)
     {
         snprintf(event_text, sizeof(event_text), "%u,CONNECT", link_id);
@@ -369,14 +349,14 @@ static void APP_ESP8266_ParseIPDCommand(const char *rx_text)
         return;
     }
 
-    /* 查找 +IPD 数据帧头 */
+    /* 鏌ユ壘 +IPD 鏁版嵁甯уご */
     ipd_head = strstr(rx_text, "+IPD,");
     if (ipd_head == NULL)
     {
         return;
     }
 
-    /* AT 返回格式: +IPD,<link>,<len>:<payload> */
+    /* AT 杩斿洖鏍煎紡: +IPD,<link>,<len>:<payload> */
     payload_start = strchr(ipd_head, ':');
     if (payload_start == NULL)
     {
@@ -400,14 +380,14 @@ static void APP_ESP8266_ParseIPDCommand(const char *rx_text)
 
     payload_start++;
 
-    /* 防止越界：拷贝长度取 payload_len 与缓存上限的较小值 */
+    /* 闃叉瓒婄晫锛氭嫹璐濋暱搴﹀彇 payload_len 涓庣紦瀛樹笂闄愮殑杈冨皬鍊?*/
     copy_len = (uint16_t)payload_len;
     if (copy_len >= APP_ESP8266_CMD_BUF_LEN)
     {
         copy_len = APP_ESP8266_CMD_BUF_LEN - 1U;
     }
 
-    /* 若实际收到数据不足声明长度，则按实际字符串长度截断 */
+    /* 鑻ュ疄闄呮敹鍒版暟鎹笉瓒冲０鏄庨暱搴︼紝鍒欐寜瀹為檯瀛楃涓查暱搴︽埅鏂?*/
     if (copy_len > (uint16_t)strlen(payload_start))
     {
         copy_len = (uint16_t)strlen(payload_start);
@@ -416,7 +396,7 @@ static void APP_ESP8266_ParseIPDCommand(const char *rx_text)
     memcpy(cmd_text, payload_start, copy_len);
     cmd_text[copy_len] = '\0';
 
-    /* 去掉尾部换行与空格，避免匹配失败 */
+    /* 鍘绘帀灏鹃儴鎹㈣涓庣┖鏍硷紝閬垮厤鍖归厤澶辫触 */
     for (i = copy_len; i > 0U; i--)
     {
         if ((cmd_text[i - 1U] == '\r') || (cmd_text[i - 1U] == '\n') || (cmd_text[i - 1U] == ' '))
@@ -429,10 +409,10 @@ static void APP_ESP8266_ParseIPDCommand(const char *rx_text)
         }
     }
 
-    /* 指令转大写，做到不区分大小写 */
+    /* 鎸囦护杞ぇ鍐欙紝鍋氬埌涓嶅尯鍒嗗ぇ灏忓啓 */
     APP_ESP8266_ToUpper(cmd_text);
 
-    /* 根据协议文本生成业务命令 */
+    /* 鏍规嵁鍗忚鏂囨湰鐢熸垚涓氬姟鍛戒护 */
     if (strstr(cmd_text, "DOOR=OPEN") != NULL)
     {
         g_pending_cmd = APP_ESP8266_CMD_DOOR_OPEN;
@@ -465,7 +445,7 @@ static void APP_ESP8266_ParseIPDCommand(const char *rx_text)
         return;
     }
 
-    /* 未识别命令，回发帮助提示 */
+    /* 鏈瘑鍒懡浠わ紝鍥炲彂甯姪鎻愮ず */
     (void)APP_ESP8266_SendTextToLink((uint8_t)link_id, "ERR:CMD,USE DOOR=OPEN/CLOSE/TOGGLE OR GET=STATUS\r\n");
 }
 
@@ -495,17 +475,17 @@ static uint8_t APP_ESP8266_SendTextToLink(uint8_t link_id, const char *text)
         return 1U;
     }
 
-    /* 1) 告知 ESP8266 即将发送的目标连接号和字节数 */
+    /* 1) 鍛婄煡 ESP8266 鍗冲皢鍙戦€佺殑鐩爣杩炴帴鍙峰拰瀛楄妭鏁?*/
     snprintf(at_cmd, sizeof(at_cmd), "AT+CIPSEND=%u,%u\r\n", link_id, text_len);
     if (APP_ESP8266_SendATAndCheck(at_cmd, ">", 800U) == 0U)
     {
         return 0U;
     }
 
-    /* 2) 发实际数据 */
+    /* 2) 鍙戝疄闄呮暟鎹?*/
     UART2_SendString("%s", text);
 
-    /* 3) 等待发送完成应答 */
+    /* 3) 绛夊緟鍙戦€佸畬鎴愬簲绛?*/
     if (APP_ESP8266_WaitAck("SEND OK", 1000U) == 0U)
     {
         return 0U;
@@ -520,7 +500,8 @@ static void APP_ESP8266_FormatStatus(char *out_text,
                                      uint8_t temp,
                                      uint8_t humi,
                                      uint8_t pir,
-                                     uint8_t door_open)
+                                     uint8_t door_open,
+                                     uint8_t light_on)
 {
     if ((out_text == NULL) || (out_len == 0U))
     {
@@ -529,11 +510,12 @@ static void APP_ESP8266_FormatStatus(char *out_text,
 
     snprintf(out_text,
              out_len,
-             "{\"temp\":%u,\"humi\":%u,\"pir\":%u,\"door\":%u,\"dht\":%u}\r\n",
+             "{\"temp\":%u,\"humi\":%u,\"pir\":%u,\"door\":%u,\"light\":%u,\"dht\":%u}\r\n",
              temp,
              humi,
              pir,
              door_open,
+             light_on,
              dht_ok);
 }
 

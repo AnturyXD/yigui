@@ -57,6 +57,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
         Bsp/W25Q128/bsp_W25Q128.c
         Core/Src/app_led.c
         Core/Src/app_pir.c
+        Core/Src/app_relay.c
         Core/Src/app_servo.c
         Core/Src/app_esp8266.c
         

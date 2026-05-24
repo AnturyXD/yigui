@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智能衣柜上位机</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --ok: #059669;
+      --warn: #d97706;
+      --err: #dc2626;
+      --line: #e5e7eb;
+      --btn: #0f766e;
+      --btn-hover: #115e59;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background: linear-gradient(140deg, #eef6ff 0%, #f8fbff 50%, #f1f9f5 100%);
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(12, 1fr);
+    }
+    .card {
+      grid-column: span 12;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+    }
+    .card.half { grid-column: span 6; }
+    .title {
+      margin: 0 0 12px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    input[type="text"] {
+      width: 320px;
+      max-width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      background: var(--btn);
+      color: #fff;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { background: var(--btn-hover); }
+    button.gray { background: #64748b; }
+    button.gray:hover { background: #475569; }
+    .status {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .ok { color: var(--ok); }
+    .err { color: var(--err); }
+    .muted { color: var(--muted); }
+    .kv {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 12px;
+    }
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fafcff;
+    }
+    .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .val {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .log {
+      height: 280px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #0b1220;
+      color: #d6e2ff;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    @media (max-width: 860px) {
+      .card.half { grid-column: span 12; }
+      .kv { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="grid">
+      <section class="card">
+        <h1 class="title">智能衣柜 TCP 上位机（WebSocket 桥接）</h1>
+        <div class="row" style="margin-bottom:10px;">
+          <label class="muted">桥接地址</label>
+          <input id="wsUrl" type="text" value="ws://127.0.0.1:9000" />
+          <button id="btnConnect">连接</button>
+          <button id="btnDisconnect" class="gray">断开</button>
+          <span id="connState" class="status muted">未连接</span>
+        </div>
+        <div class="row">
+          <span class="muted">设备 TCP 默认是 192.168.4.1:333，由本地桥接程序连接。</span>
+        </div>
+      </section>
+
+      <section class="card half">
+        <h2 class="title">状态上报</h2>
+        <div class="kv">
+          <div class="item"><div class="label">温度 temp</div><div id="temp" class="val">--</div></div>
+          <div class="item"><div class="label">湿度 humi</div><div id="humi" class="val">--</div></div>
+          <div class="item"><div class="label">人体 pir</div><div id="pir" class="val">--</div></div>
+          <div class="item"><div class="label">门状态 door</div><div id="door" class="val">--</div></div>
+          <div class="item"><div class="label">灯状态 light</div><div id="light" class="val">--</div></div>
+          <div class="item"><div class="label">DHT 有效 dht</div><div id="dht" class="val">--</div></div>
+        </div>
+      </section>
+
+      <section class="card half">
+        <h2 class="title">指令下发</h2>
+        <div class="row" style="margin-bottom: 8px;">
+          <button data-cmd="DOOR=OPEN">DOOR=OPEN</button>
+          <button data-cmd="DOOR=CLOSE">DOOR=CLOSE</button>
+          <button data-cmd="DOOR=TOGGLE">DOOR=TOGGLE</button>
+          <button data-cmd="GET=STATUS">GET=STATUS</button>
+        </div>
+        <div class="row">
+          <input id="customCmd" type="text" placeholder="自定义命令，如 GET=STATUS" />
+          <button id="btnSendCustom">发送</button>
+        </div>
+        <p class="muted" style="margin: 10px 0 0;">
+          当前固件只支持门控命令和状态查询；灯控为 PIR 自动逻辑，仅上报不接受控制。
+        </p>
+      </section>
+
+      <section class="card">
+        <h2 class="title">通信日志</h2>
+        <div id="log" class="log"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const els = {
+      wsUrl: document.getElementById("wsUrl"),
+      btnConnect: document.getElementById("btnConnect"),
+      btnDisconnect: document.getElementById("btnDisconnect"),
+      btnSendCustom: document.getElementById("btnSendCustom"),
+      customCmd: document.getElementById("customCmd"),
+      connState: document.getElementById("connState"),
+      log: document.getElementById("log"),
+      temp: document.getElementById("temp"),
+      humi: document.getElementById("humi"),
+      pir: document.getElementById("pir"),
+      door: document.getElementById("door"),
+      light: document.getElementById("light"),
+      dht: document.getElementById("dht")
+    };
+
+    let ws = null;
+
+    function now() {
+      return new Date().toLocaleTimeString();
+    }
+
+    function logLine(text) {
+      els.log.textContent += `[${now()}] ${text}\n`;
+      els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    function setConnState(text, ok) {
+      els.connState.textContent = text;
+      els.connState.className = "status " + (ok ? "ok" : "err");
+    }
+
+    function safeSend(cmd) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        logLine("发送失败：未连接");
+        return;
+      }
+      ws.send(cmd + "\r\n");
+      logLine("TX > " + cmd);
+    }
+
+    function updateStatus(obj) {
+      els.temp.textContent = Number.isFinite(obj.temp) ? `${obj.temp}°C` : "--";
+      els.humi.textContent = Number.isFinite(obj.humi) ? `${obj.humi}%` : "--";
+      els.pir.textContent = obj.pir === 1 ? "有人" : obj.pir === 0 ? "无人" : "--";
+      els.door.textContent = obj.door === 1 ? "开" : obj.door === 0 ? "关" : "--";
+      els.light.textContent = obj.light === 1 ? "开灯" : obj.light === 0 ? "关灯" : "--";
+      els.dht.textContent = obj.dht === 1 ? "有效" : obj.dht === 0 ? "无效" : "--";
+    }
+
+    function handleLine(line) {
+      const msg = line.trim();
+      if (!msg) return;
+      logLine("RX < " + msg);
+
+      if (msg.startsWith("{") && msg.endsWith("}")) {
+        try {
+          const obj = JSON.parse(msg);
+          updateStatus(obj);
+        } catch (_) {}
+      }
+    }
+
+    function connect() {
+      const url = els.wsUrl.value.trim();
+      if (!url) return;
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+
+      ws = new WebSocket(url);
+      setConnState("连接中...", false);
+
+      ws.onopen = () => {
+        setConnState("已连接", true);
+        logLine("WebSocket connected: " + url);
+      };
+
+      ws.onmessage = (ev) => {
+        String(ev.data).split(/\r?\n/).forEach(handleLine);
+      };
+
+      ws.onerror = () => {
+        setConnState("连接异常", false);
+        logLine("WebSocket error");
+      };
+
+      ws.onclose = () => {
+        setConnState("已断开", false);
+        logLine("WebSocket closed");
+      };
+    }
+
+    els.btnConnect.addEventListener("click", connect);
+    els.btnDisconnect.addEventListener("click", () => ws && ws.close());
+    els.btnSendCustom.addEventListener("click", () => {
+      const cmd = els.customCmd.value.trim();
+      if (!cmd) return;
+      safeSend(cmd);
+      els.customCmd.value = "";
+    });
+
+    document.querySelectorAll("button[data-cmd]").forEach((btn) => {
+      btn.addEventListener("click", () => safeSend(btn.dataset.cmd));
+    });
+  </script>
+</body>
+</html>
+

@@ -23,4 +23,11 @@ void APP_PIR_Init(void);
   */
 uint8_t APP_PIR_ReadState(void);
 
+/**
+  * @brief  人体红外中断回调
+  * @param  gpio_pin: 触发中断的引脚编号
+  * @retval 无
+  */
+void APP_PIR_EXTI_Callback(uint16_t gpio_pin);
+
 #endif
